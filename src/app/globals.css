@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-inter);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+
+  --radius-sm: calc(var(--radius) - 0.25rem);
+  --radius-md: calc(var(--radius) - 0.125rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.25rem);
+}
+
+:root {
+  --background: #f7f8fb;
+  --foreground: #0f172a;
+  --card: rgba(255, 255, 255, 0.95);
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #0f172a;
+  --primary-foreground: #f8fafc;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #334155;
+  --muted: #f8fafc;
+  --muted-foreground: #64748b;
+  --accent: #eef2ff;
+  --accent-foreground: #1e40af;
+  --destructive: #ef4444;
+  --border: rgba(148, 163, 184, 0.16);
+  --input: #ffffff;
+  --ring: rgba(59, 130, 246, 0.28);
+  --success: #059669;
+  --warning: #d97706;
+  --info: #2563eb;
+  --radius: 1.1rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: hidden;
+  color: var(--foreground);
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+  background: linear-gradient(180deg, #fafbfd 0%, #f7f8fb 100%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  a {
+    @apply text-inherit no-underline;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    @apply outline-none;
+  }
+}
+
+@layer utilities {
+  .surface-card {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: 0 18px 50px -40px rgba(15, 23, 42, 0.18);
+  }
+
+  .surface-soft {
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    box-shadow: 0 10px 30px -24px rgba(15, 23, 42, 0.12);
+  }
+
+  .surface-dark {
+    background: #0f172a;
+    border: 1px solid rgba(51, 65, 85, 0.68);
+    box-shadow: 0 22px 50px -36px rgba(2, 6, 23, 0.7);
+  }
+
+  .section-shell {
+    @apply rounded-[28px] px-5 py-5 md:px-6 md:py-6;
+  }
+
+  .hairline {
+    border-color: rgba(148, 163, 184, 0.18);
+  }
+
+  .hover-lift {
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-1px);
+  }
+}
+
+::selection {
+  background: rgba(37, 99, 235, 0.12);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.56);
+}
+
+button,
+a,
+select,
+input,
+textarea {
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease,
+    opacity 0.18s ease;
+}
