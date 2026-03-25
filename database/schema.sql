@@ -1,4 +1,4 @@
--- InfraOS Recorrência - schema Supabase
+-- RecorrênciaOS - schema Supabase
 -- Execute tudo no SQL Editor do projeto Supabase.
 
 create extension if not exists pgcrypto;
@@ -57,7 +57,7 @@ create table if not exists public.clients (
   name text not null,
   phone text not null unique,
   total_services integer not null default 1 check (total_services > 0),
-  description text not null,
+  description text not null default '',
   status text not null default 'Aguardando contato' check (status in ('Aguardando contato', 'O.S. aberta', 'Resolvido', 'Sem retorno')),
   responsible_user_id uuid references public.profiles(id) on delete set null,
   responsible_name text not null default 'Equipe',
@@ -134,12 +134,25 @@ create policy "profiles_select_authenticated"
 using (true);
 
 drop policy if exists "profiles_update_own" on public.profiles;
-create policy "profiles_update_own"
+drop policy if exists "profiles_update_own_safe" on public.profiles;
+create policy "profiles_update_own_safe"
   on public.profiles
   for update
   to authenticated
 using (auth.uid() = id)
-  with check (auth.uid() = id);
+  with check (
+    auth.uid() = id
+    and role = public.current_app_role()
+    and is_active = coalesce((select p.is_active from public.profiles as p where p.id = auth.uid()), true)
+  );
+
+drop policy if exists "profiles_admin_update" on public.profiles;
+create policy "profiles_admin_update"
+  on public.profiles
+  for update
+  to authenticated
+using (public.current_app_role() = 'ADMIN' and auth.uid() <> id)
+  with check (public.current_app_role() = 'ADMIN' and auth.uid() <> id);
 
 -- Clients
 drop policy if exists "clients_select_authenticated" on public.clients;

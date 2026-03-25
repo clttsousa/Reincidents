@@ -31,7 +31,7 @@ type ClientRow = {
   updated_at: string;
 };
 
-const STORAGE_KEY = "infraos-recorrencia-clients-v5";
+const STORAGE_KEY = "recorrenciaos-clients-v6";
 const supabaseEnabled = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
 
 const ClientsContext = createContext<ClientsContextValue | null>(null);

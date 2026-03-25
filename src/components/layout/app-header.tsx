@@ -15,6 +15,7 @@ import type { UserRole } from "@/types/auth";
 interface AppHeaderProps {
   user: {
     name?: string | null;
+    email?: string | null;
     role: UserRole;
   };
 }
@@ -35,7 +36,7 @@ export function AppHeader({ user }: AppHeaderProps) {
       .join("") || "US";
 
   const handleQuickCreate = () => {
-    window.dispatchEvent(new CustomEvent("infraos:new-client"));
+    window.dispatchEvent(new CustomEvent("recorrenciaos:new-client"));
   };
 
   const handleSignOut = async () => {
@@ -51,12 +52,21 @@ export function AppHeader({ user }: AppHeaderProps) {
     <header className="sticky top-0 z-30 px-4 pt-4 sm:px-6 lg:px-8">
       <div className="surface-soft flex min-h-[72px] items-center gap-3 rounded-[24px] px-4 py-3 sm:px-5">
         <div className="lg:hidden">
-          <MobileMenu items={items} />
+          <MobileMenu items={items} user={user} />
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">{roleLabels[user.role]}</p>
-          <h2 className="mt-1 truncate text-xl font-semibold tracking-tight text-slate-950">{title}</h2>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <p className="truncate text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 sm:text-xs">{roleLabels[user.role]}</p>
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-500 sm:hidden">{initials}</span>
+          </div>
+          <h2 className="mt-1 truncate text-lg font-semibold tracking-tight text-slate-950 sm:text-xl">{title}</h2>
+        </div>
+
+        <div className="flex items-center gap-2 sm:hidden">
+          <Button variant="outline" size="icon" className="border-white/70 bg-white/80 shadow-none" onClick={handleQuickCreate}>
+            <Plus className="size-4" />
+          </Button>
         </div>
 
         <div className="hidden items-center gap-2 sm:flex">

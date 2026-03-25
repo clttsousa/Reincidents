@@ -80,7 +80,7 @@ export function RegisterForm() {
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
+    <form className="space-y-4 sm:space-y-5" onSubmit={handleSubmit}>
       <div className="space-y-2">
         <label className="text-sm font-medium text-slate-800">Nome</label>
         <div className="relative">

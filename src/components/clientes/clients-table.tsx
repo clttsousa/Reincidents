@@ -8,6 +8,7 @@ import {
   MessageCircle,
   Pencil,
   PhoneCall,
+  Plus,
   Search,
   ShieldAlert,
   UserRound,
@@ -43,10 +44,10 @@ const quickFilters: Array<{ label: string; value: "Todos" | ClientStatus }> = [
   { label: "Sem retorno", value: "Sem retorno" },
 ];
 
-function MetricCard({ label, value }: { label: string; value: string }) {
+function MetricCard({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
-    <div className="rounded-[22px] border border-slate-200 bg-white p-4">
-      <p className="text-sm text-slate-500">{label}</p>
+    <div className={cn("rounded-[22px] border border-slate-200 bg-white p-4", className)}>
+      <p className="text-xs text-slate-500 sm:text-sm">{label}</p>
       <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">{value}</p>
     </div>
   );
@@ -86,13 +87,14 @@ export function ClientsTable() {
       setSheetOpen(true);
     };
 
-    window.addEventListener("infraos:new-client", openCreate as EventListener);
-    return () => window.removeEventListener("infraos:new-client", openCreate as EventListener);
+    window.addEventListener("recorrenciaos:new-client", openCreate as EventListener);
+    return () => window.removeEventListener("recorrenciaos:new-client", openCreate as EventListener);
   }, []);
 
   useEffect(() => {
     if (!copiedClientId) return;
-    const timeout = window.setTimeout(() => setCopiedClientId(null), 1600);
+
+    const timeout = window.setTimeout(() => setCopiedClientId(null), 1800);
     return () => window.clearTimeout(timeout);
   }, [copiedClientId]);
 
@@ -160,9 +162,9 @@ export function ClientsTable() {
 
   return (
     <>
-      <div className="space-y-5">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <MetricCard label="Total" value={String(stats.total)} />
+      <div className="space-y-4 sm:space-y-5">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+          <MetricCard label="Total" value={String(stats.total)} className="col-span-2 xl:col-span-1" />
           <MetricCard label="Aguardando contato" value={String(stats.waiting)} />
           <MetricCard label="O.S. abertas" value={String(stats.os)} />
           <MetricCard label="Resolvidos" value={String(stats.solved)} />
@@ -187,10 +189,10 @@ export function ClientsTable() {
           </div>
         ) : null}
 
-        <div className="surface-card rounded-[28px] p-5 md:p-6">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="surface-card rounded-[24px] p-4 sm:rounded-[28px] sm:p-5 md:p-6">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row lg:items-center">
-              <div className="relative min-w-[280px] flex-1 lg:w-[340px] lg:flex-none">
+              <div className="relative w-full lg:w-[340px] lg:flex-none">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 <Input
                   value={search}
@@ -199,36 +201,38 @@ export function ClientsTable() {
                   placeholder="Buscar por cliente, telefone, responsável ou O.S."
                 />
               </div>
-              <Button variant="outline" className="bg-white">
+              <div className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600">
                 {filteredClients.length} exibidos
-              </Button>
+              </div>
             </div>
-            <Button onClick={openCreateSheet}>
+            <Button onClick={openCreateSheet} className="hidden sm:inline-flex">
               Novo cliente
             </Button>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            {quickFilters.map((filter) => {
-              const isActive = activeFilter === filter.value;
+          <div className="-mx-1 mt-4 overflow-x-auto pb-1">
+            <div className="flex min-w-max gap-2 px-1">
+              {quickFilters.map((filter) => {
+                const isActive = activeFilter === filter.value;
 
-              return (
-                <button
-                  key={filter.label}
-                  type="button"
-                  onClick={() => setActiveFilter(filter.value)}
-                  className={cn(
-                    "inline-flex items-center rounded-full border px-4 py-2 text-sm font-medium transition-all",
-                    isActive ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50",
-                  )}
-                >
-                  {filter.label}
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={filter.label}
+                    type="button"
+                    onClick={() => setActiveFilter(filter.value)}
+                    className={cn(
+                      "inline-flex shrink-0 items-center rounded-full border px-4 py-2 text-sm font-medium transition-all",
+                      isActive ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50",
+                    )}
+                  >
+                    {filter.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="mt-4 grid gap-3 rounded-[24px] border border-slate-200 bg-slate-50 p-4 lg:grid-cols-[220px_170px_170px_auto]">
+          <div className="mt-4 grid gap-3 rounded-[22px] border border-slate-200 bg-slate-50 p-3 sm:p-4 lg:grid-cols-[220px_170px_170px_auto]">
             <select
               value={assigneeFilter}
               onChange={(event) => setAssigneeFilter(event.target.value)}
@@ -303,7 +307,7 @@ export function ClientsTable() {
                             {isCritical ? <Badge className="bg-amber-100 text-amber-900">Crítico</Badge> : null}
                             {isStale ? <Badge className="bg-rose-100 text-rose-900">Atrasado</Badge> : null}
                           </div>
-                          <p className="mt-1 line-clamp-2 text-sm text-slate-500">{client.description}</p>
+                          {client.description ? <p className="mt-1 line-clamp-2 text-sm text-slate-500">{client.description}</p> : null}
                           <p className="mt-2 text-xs text-slate-400">Atualizado {formatDateLabel(client.updatedAt)}</p>
                         </div>
 
@@ -398,7 +402,7 @@ export function ClientsTable() {
 
                       <div className="space-y-4 lg:hidden">
                         <div className="flex items-start justify-between gap-3">
-                          <div>
+                          <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="font-semibold text-slate-950">{client.name}</p>
                               {isCritical ? <Badge className="bg-amber-100 text-amber-900">Crítico</Badge> : null}
@@ -406,67 +410,93 @@ export function ClientsTable() {
                             </div>
                             <p className="mt-1 text-sm text-slate-500">{formatPhone(client.phone)}</p>
                           </div>
-                          <Badge variant="outline" className="rounded-full border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-700">
+                          <Badge variant="outline" className="shrink-0 rounded-full border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-700">
                             {client.totalServices}x
                           </Badge>
                         </div>
 
-                        <p className="text-sm leading-6 text-slate-500">{client.description}</p>
+                        {client.description ? <p className="text-sm leading-6 text-slate-500">{client.description}</p> : null}
 
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <select
-                            aria-label={`Alterar status de ${client.name}`}
-                            value={client.status}
-                            onChange={(event) => updateClientStatus(client.id, event.target.value as ClientStatus)}
-                            className={cn(
-                              "h-10 w-full appearance-none rounded-full border px-4 text-sm font-semibold outline-none transition focus-visible:ring-4 focus-visible:ring-ring/50",
-                              statusStyles[client.status],
-                            )}
-                          >
-                            {statusOptions.map((status) => (
-                              <option key={status} value={status}>
-                                {status}
-                              </option>
-                            ))}
-                          </select>
+                        <div className="grid gap-3">
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div>
+                              <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Status</p>
+                              <select
+                                aria-label={`Alterar status de ${client.name}`}
+                                value={client.status}
+                                onChange={(event) => updateClientStatus(client.id, event.target.value as ClientStatus)}
+                                className={cn(
+                                  "h-11 w-full appearance-none rounded-2xl border px-4 text-sm font-semibold outline-none transition focus-visible:ring-4 focus-visible:ring-ring/50",
+                                  statusStyles[client.status],
+                                )}
+                              >
+                                {statusOptions.map((status) => (
+                                  <option key={status} value={status}>
+                                    {status}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Responsável</p>
+                              <div className="inline-flex h-11 w-full items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                                <UserRound className="size-4 text-slate-400" />
+                                {client.assignee}
+                              </div>
+                            </div>
+                          </div>
 
-                          <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                            <UserRound className="size-4 text-slate-400" />
-                            {client.assignee}
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                              <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">O.S.</p>
+                              <p className="mt-2 font-medium text-slate-950">{getOsLabel(client)}</p>
+                              {client.osNumber ? <p className="mt-1 text-xs text-slate-400">{client.osNumber}</p> : null}
+                            </div>
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                              <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Resolvido</p>
+                              <p className="mt-2 font-medium text-slate-950">{getResolvedLabel(client)}</p>
+                            </div>
                           </div>
                         </div>
 
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
-                            <span className="font-medium text-slate-900">O.S.:</span> {getOsLabel(client)}
-                            {client.osNumber ? <span className="ml-2 text-xs text-slate-400">{client.osNumber}</span> : null}
-                          </div>
-                          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
-                            <span className="font-medium text-slate-900">Resolvido:</span> {getResolvedLabel(client)}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          <Button variant="outline" size="sm" className="rounded-full px-3" onClick={() => handleCopyPhone(client)}>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button variant="outline" size="sm" className="h-10 justify-center rounded-2xl px-3" onClick={() => handleCopyPhone(client)}>
                             <Copy className="size-3.5" />
                             {copiedClientId === client.id ? "Copiado" : "Copiar"}
                           </Button>
                           <a
+                            href={`tel:${sanitizePhone(client.phone)}`}
+                            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-10 justify-center rounded-2xl px-3")}
+                          >
+                            <PhoneCall className="size-3.5" />
+                            Ligar
+                          </a>
+                          <a
                             href={buildWhatsappLink(client.phone)}
                             target="_blank"
                             rel="noreferrer"
-                            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "rounded-full px-3")}
+                            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-10 justify-center rounded-2xl px-3")}
                           >
                             <MessageCircle className="size-3.5" />
                             WhatsApp
                           </a>
-                          <Button variant="outline" size="sm" className="rounded-full px-3" onClick={() => openEditSheet(client)}>
+                          <Button variant="outline" size="sm" className="h-10 justify-center rounded-2xl px-3" onClick={() => openEditSheet(client)}>
                             <Pencil className="size-3.5" />
                             Editar
                           </Button>
                         </div>
 
-                        <p className="text-xs text-slate-400">Atualizado {formatDateLabel(client.updatedAt)}</p>
+                        <div className="flex items-center justify-between gap-3 text-xs text-slate-400">
+                          <p>Atualizado {formatDateLabel(client.updatedAt)}</p>
+                          <a
+                            href={buildWhatsappLink(client.phone)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-8 rounded-full text-slate-500")}
+                          >
+                            <ExternalLink className="size-4" />
+                          </a>
+                        </div>
                       </div>
                     </div>
                   );
@@ -475,6 +505,13 @@ export function ClientsTable() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/92 px-3 py-3 backdrop-blur sm:hidden">
+        <Button onClick={openCreateSheet} className="h-11 w-full justify-center rounded-2xl">
+          <Plus className="size-4" />
+          Novo cliente
+        </Button>
       </div>
 
       <ClientFormSheet open={sheetOpen} mode={sheetMode} client={selectedClient} onClose={() => setSheetOpen(false)} onSubmit={handleSave} />

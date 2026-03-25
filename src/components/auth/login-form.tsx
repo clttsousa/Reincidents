@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ArrowRight, Loader2, LockKeyhole, Mail } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
@@ -22,6 +22,13 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (searchParams.get("blocked") !== "1") return;
+
+    const supabase = createClient();
+    void supabase.auth.signOut();
+  }, [searchParams]);
+
   const successMessage = useMemo(() => {
     if (searchParams.get("registered") === "1") {
       return "Conta criada. Faça login para acessar o painel.";
@@ -29,6 +36,10 @@ export function LoginForm() {
 
     if (searchParams.get("confirm") === "1") {
       return "Conta criada. Verifique seu e-mail para confirmar o acesso antes de entrar.";
+    }
+
+    if (searchParams.get("blocked") === "1") {
+      return "Sua conta está inativa no momento. Fale com um administrador para reativar o acesso.";
     }
 
     return null;
@@ -68,7 +79,7 @@ export function LoginForm() {
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
+    <form className="space-y-4 sm:space-y-5" onSubmit={handleSubmit}>
       <div className="space-y-2">
         <label className="text-sm font-medium text-slate-800">E-mail</label>
         <div className="relative">

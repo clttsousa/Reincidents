@@ -31,9 +31,13 @@ export async function getSessionOrRedirect() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, full_name, role")
+    .select("id, full_name, role, is_active")
     .eq("id", user.id)
     .maybeSingle();
+
+  if (profile && profile.is_active === false) {
+    redirect("/login?blocked=1");
+  }
 
   const session = {
     user: {

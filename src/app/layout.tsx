@@ -10,8 +10,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "InfraOS Recorrência",
-  description: "Painel interno para gestão de clientes recorrentes com problemas de conexão.",
+  title: {
+    default: "RecorrênciaOS",
+    template: "%s | RecorrênciaOS",
+  },
+  description: "Painel interno para gestão de clientes recorrentes, contatos e ordens de serviço.",
 };
 
 export default function RootLayout({

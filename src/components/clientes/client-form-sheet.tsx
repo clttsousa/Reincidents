@@ -113,11 +113,11 @@ export function ClientFormSheet({ open, mode, client, onClose, onSubmit }: Clien
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/35 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-end justify-end bg-slate-950/35 backdrop-blur-sm md:items-stretch">
       <button aria-label="Fechar formulário" className="h-full flex-1 cursor-default" onClick={onClose} type="button" />
-      <div className="relative h-full w-full max-w-3xl overflow-y-auto border-l border-white/70 bg-white/95 shadow-2xl">
+      <div className="relative h-[94dvh] w-full overflow-y-auto rounded-t-[28px] border border-white/70 bg-white/95 shadow-2xl md:h-full md:max-w-3xl md:rounded-none md:border-y-0 md:border-r-0 md:border-l">
         <form className="flex min-h-full flex-col" onSubmit={handleSubmit}>
-          <div className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/92 px-5 py-4 backdrop-blur md:px-7">
+          <div className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/92 px-4 py-4 backdrop-blur sm:px-5 md:px-7">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-3">
                 <Badge className="w-fit bg-slate-950 text-white">Cadastro rápido</Badge>
@@ -132,8 +132,8 @@ export function ClientFormSheet({ open, mode, client, onClose, onSubmit }: Clien
             </div>
           </div>
 
-          <div className="flex-1 space-y-6 px-5 py-5 md:px-7 md:py-6">
-            <section className="grid gap-4 rounded-[28px] border border-slate-200/80 bg-slate-50/70 p-5 lg:grid-cols-[1.4fr_1fr]">
+          <div className="flex-1 space-y-5 px-4 py-4 sm:px-5 md:space-y-6 md:px-7 md:py-6">
+            <section className="grid gap-4 rounded-[24px] border border-slate-200/80 bg-slate-50/70 p-4 sm:p-5 lg:grid-cols-[1.4fr_1fr]">
               <div>
                 <p className="text-sm font-medium text-slate-900">Prévia operacional</p>
                 <p className="mt-1 text-sm text-slate-500">
@@ -299,17 +299,17 @@ export function ClientFormSheet({ open, mode, client, onClose, onSubmit }: Clien
             </section>
           </div>
 
-          <div className="sticky bottom-0 border-t border-slate-200/80 bg-white/92 px-5 py-4 backdrop-blur md:px-7">
+          <div className="sticky bottom-0 border-t border-slate-200/80 bg-white/92 px-4 py-4 backdrop-blur sm:px-5 md:px-7">
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2 text-sm text-slate-500">
                 <CheckCircle2 className="size-4 text-green-600" />
                 Fluxo pensado para cadastro rápido e edição sem atrito.
               </div>
-              <div className="flex gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:flex">
                 <Button type="button" variant="outline" className="border-slate-200 bg-white" onClick={onClose}>
                   Cancelar
                 </Button>
-                <Button type="submit">
+                <Button type="submit" className="w-full sm:w-auto">
                   <Save className="size-4" />
                   {mode === "create" ? "Salvar cliente" : "Salvar alterações"}
                 </Button>

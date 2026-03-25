@@ -2,12 +2,11 @@ import { ClientsTable } from "@/components/clientes/clients-table";
 
 export default function ClientesPage() {
   return (
-    <div className="space-y-5">
-      <section className="flex items-end justify-between gap-4 px-1">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Clientes recorrentes</h1>
-          <p className="mt-1 text-sm text-slate-500">Acompanhe a fila, ajuste status e mantenha a equipe organizada.</p>
-        </div>
+    <div className="space-y-4 sm:space-y-5">
+      <section className="rounded-[24px] border border-slate-200/80 bg-white/80 px-4 py-4 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.18)] sm:px-5 sm:py-5">
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-emerald-600">Operação</p>
+        <h1 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">Clientes recorrentes</h1>
+        <p className="mt-1 text-sm leading-6 text-slate-500 sm:max-w-2xl">Acompanhe a fila, ajuste status e mantenha a equipe organizada em qualquer dispositivo.</p>
       </section>
 
       <ClientsTable />

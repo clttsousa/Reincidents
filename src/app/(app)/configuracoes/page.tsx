@@ -1,50 +1,41 @@
-import { Database, KeyRound, ShieldCheck, Users2, Workflow } from "lucide-react";
+import { Database, ShieldCheck, Users2 } from "lucide-react";
 
-import { requireRole } from "@/lib/auth/server";
+import { UserManagementPanel } from "@/components/configuracoes/user-management-panel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireRole } from "@/lib/auth/server";
 
-const cards = [
+const supportCards = [
   {
-    title: "Equipe e perfis",
-    description: "Base preparada para admin, supervisor e atendente.",
+    title: "Gestão centralizada",
+    description: "Perfis, status de acesso e governança de equipe concentrados em uma única área administrativa.",
     icon: Users2,
   },
   {
-    title: "Segurança e acesso",
-    description: "Supabase Auth ativo com rotas protegidas e sessão por cookie.",
+    title: "Segurança operacional",
+    description: "Apenas administradores podem acessar esta tela e as alterações são confirmadas antes de salvar.",
     icon: ShieldCheck,
   },
   {
-    title: "Supabase Database",
-    description: "Banco Postgres com RLS, trigger de perfis e estrutura multiusuário.",
+    title: "Integração Supabase",
+    description: "Os dados de usuários são lidos e atualizados em tempo real na tabela public.profiles.",
     icon: Database,
-  },
-  {
-    title: "Controle de permissões",
-    description: "Perfis prontos para crescer com governança gradual depois.",
-    icon: KeyRound,
-  },
-  {
-    title: "Fluxo operacional",
-    description: "Status, fila e histórico conectados à operação diária.",
-    icon: Workflow,
   },
 ];
 
 export default async function ConfiguracoesPage() {
-  await requireRole(["ADMIN"]);
+  const session = await requireRole(["ADMIN"]);
 
   return (
     <div className="space-y-6">
       <section className="surface-card section-shell space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Configurações administrativas</h1>
-        <p className="text-sm text-muted-foreground sm:text-base">
-          Área reservada para evolução de perfis, preferências do sistema, integrações e governança de acesso.
+        <p className="max-w-3xl text-sm text-muted-foreground sm:text-base">
+          Gerencie usuários, cargos e disponibilidade de acesso com uma experiência pensada para operação diária.
         </p>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {cards.map((card) => {
+      <div className="grid gap-4 md:grid-cols-3">
+        {supportCards.map((card) => {
           const Icon = card.icon;
 
           return (
@@ -57,12 +48,14 @@ export default async function ConfiguracoesPage() {
                 <CardDescription>{card.description}</CardDescription>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
-                Esta área já está protegida por perfil de admin, evitando que atendentes acessem configurações sensíveis.
+                As mudanças feitas aqui respeitam permissões por perfil e persistem diretamente no Supabase.
               </CardContent>
             </Card>
           );
         })}
       </div>
+
+      <UserManagementPanel currentUserId={session.user.id} />
     </div>
   );
 }

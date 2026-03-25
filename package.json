@@ -1,6 +1,6 @@
 {
-  "name": "infraos-recorrencia",
-  "version": "0.3.0",
+  "name": "recorrenciaos",
+  "version": "0.3.3",
   "private": true,
   "scripts": {
     "dev": "next dev",

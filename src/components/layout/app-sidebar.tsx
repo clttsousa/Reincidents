@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { RadioTower } from "lucide-react";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { Badge } from "@/components/ui/badge";
 import { getNavigationForRole } from "@/lib/navigation";
@@ -20,14 +20,8 @@ export function AppSidebar({ user }: AppSidebarProps) {
   return (
     <aside className="fixed inset-y-0 left-0 hidden w-[276px] px-5 py-5 lg:flex lg:flex-col">
       <div className="surface-dark flex h-full flex-col rounded-[28px] px-5 py-5 text-white">
-        <Link href="/dashboard" className="flex items-center gap-3 rounded-2xl p-1">
-          <div className="flex size-11 items-center justify-center rounded-2xl bg-white text-slate-950">
-            <RadioTower className="size-5" />
-          </div>
-          <div>
-            <p className="font-semibold tracking-tight text-white">InfraOS</p>
-            <p className="text-sm text-slate-400">Recorrência</p>
-          </div>
+        <Link href="/dashboard" className="rounded-2xl p-1">
+          <BrandLogo theme="dark" showTagline={false} />
         </Link>
 
         <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
