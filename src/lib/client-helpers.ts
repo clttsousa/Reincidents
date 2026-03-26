@@ -1,4 +1,4 @@
-import type { ClientFormValues, ClientRecord, ClientStats, ClientStatus } from "@/types/mock";
+import type { AssigneeOption, ClientFormValues, ClientRecord, ClientStats, ClientStatus, ClientTimelineEntry } from "@/types/mock";
 
 export const statusOptions: ClientStatus[] = ["Aguardando contato", "O.S. aberta", "Resolvido", "Sem retorno"];
 
@@ -28,8 +28,9 @@ export function formatPhone(phone: string) {
 }
 
 export function formatDateLabel(value: string) {
-  const date = new Date(value);
+  if (!value) return "Sem data";
 
+  const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
 
   const now = new Date();
@@ -57,15 +58,31 @@ export function formatDateLabel(value: string) {
   }).format(date);
 }
 
+export function toDateTimeLocalValue(value: string) {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const tzOffsetMs = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - tzOffsetMs).toISOString().slice(0, 16);
+}
+
+export function fromDateTimeLocalValue(value: string) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString();
+}
+
 export function daysSinceUpdate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 0;
-
   return Math.floor((Date.now() - date.getTime()) / 86400000);
 }
 
-export function isCriticalClient(client: Pick<ClientRecord, "totalServices" | "status" | "resolved">) {
-  return client.totalServices >= 11 || client.status === "Sem retorno" || !client.resolved;
+export function isCriticalClient(client: Pick<ClientRecord, "totalServices" | "status" | "resolved" | "nextActionAt">) {
+  const overdueNextAction = Boolean(client.nextActionAt) && new Date(client.nextActionAt).getTime() < Date.now();
+  return client.totalServices >= 11 || client.status === "Sem retorno" || overdueNextAction || !client.resolved;
 }
 
 export function isStaleClient(client: Pick<ClientRecord, "updatedAt">, threshold = 3) {
@@ -75,11 +92,16 @@ export function isStaleClient(client: Pick<ClientRecord, "updatedAt">, threshold
 export function getOsLabel(client: Pick<ClientRecord, "osOpen" | "resolved" | "osNumber">) {
   if (!client.osOpen && !client.osNumber) return "Não aberta";
   if (client.resolved) return "Concluída";
-  return "Aberta";
+  return client.osNumber ? client.osNumber : "Aberta";
 }
 
 export function getResolvedLabel(client: Pick<ClientRecord, "resolved">) {
   return client.resolved ? "Sim" : "Não";
+}
+
+export function getAssigneeLabel(assignees: AssigneeOption[], responsibleUserId?: string | null, fallback = "Equipe") {
+  if (!responsibleUserId) return fallback;
+  return assignees.find((option) => option.id === responsibleUserId)?.name ?? fallback;
 }
 
 export function clientToFormValues(client?: ClientRecord): ClientFormValues {
@@ -90,11 +112,13 @@ export function clientToFormValues(client?: ClientRecord): ClientFormValues {
       totalServices: 1,
       description: "",
       status: "Aguardando contato",
-      assignee: "",
+      responsibleUserId: "",
       osOpen: false,
       osNumber: "",
       resolved: false,
       notes: "",
+      lastContactAt: "",
+      nextActionAt: "",
     };
   }
 
@@ -104,29 +128,37 @@ export function clientToFormValues(client?: ClientRecord): ClientFormValues {
     totalServices: client.totalServices,
     description: client.description,
     status: client.status,
-    assignee: client.assignee,
+    responsibleUserId: client.responsibleUserId ?? "",
     osOpen: client.osOpen,
     osNumber: client.osNumber,
     resolved: client.resolved,
     notes: client.notes,
+    lastContactAt: toDateTimeLocalValue(client.lastContactAt),
+    nextActionAt: toDateTimeLocalValue(client.nextActionAt),
   };
 }
 
-export function normalizeClientPayload(values: ClientFormValues) {
+export function normalizeClientPayload(values: ClientFormValues, assignees: AssigneeOption[]) {
   const phone = sanitizePhone(values.phone);
   const resolved = values.status === "Resolvido" ? true : values.resolved;
   const osOpen = values.status === "O.S. aberta" || resolved ? true : values.osOpen;
+  const selectedAssignee = assignees.find((option) => option.id === values.responsibleUserId);
 
   return {
-    ...values,
     name: values.name.trim(),
     phone,
+    totalServices: values.totalServices,
     description: values.description.trim(),
-    assignee: values.assignee.trim(),
+    status: values.status,
+    responsibleUserId: values.responsibleUserId || "",
+    assignee: selectedAssignee?.name ?? "Equipe",
+    responsibleEmail: selectedAssignee?.email ?? "",
     notes: values.notes.trim(),
-    osNumber: values.osOpen || osOpen ? values.osNumber.trim() : "",
+    osNumber: osOpen ? values.osNumber.trim() : "",
     resolved,
     osOpen,
+    lastContactAt: fromDateTimeLocalValue(values.lastContactAt),
+    nextActionAt: fromDateTimeLocalValue(values.nextActionAt),
   };
 }
 
@@ -139,12 +171,19 @@ export function validateClientForm(values: ClientFormValues) {
   if (!Number.isFinite(values.totalServices) || values.totalServices < 1) {
     errors.totalServices = "O total de atendimentos deve ser maior que zero.";
   }
-  if (values.assignee.trim().length < 2) errors.assignee = "Informe o responsável pelo caso.";
+  if (values.responsibleUserId.trim().length < 3) errors.responsibleUserId = "Selecione um responsável do sistema.";
   if ((values.osOpen || values.status === "O.S. aberta") && values.osNumber.trim().length < 3) {
     errors.osNumber = "Preencha o número da O.S. quando houver ordem aberta.";
   }
   if (values.notes.trim().length > 0 && values.notes.trim().length < 6) {
     errors.notes = "A observação deve ter pelo menos 6 caracteres ou ficar vazia.";
+  }
+  if (values.lastContactAt && values.nextActionAt) {
+    const last = new Date(values.lastContactAt).getTime();
+    const next = new Date(values.nextActionAt).getTime();
+    if (!Number.isNaN(last) && !Number.isNaN(next) && next < last) {
+      errors.nextActionAt = "A próxima ação não pode acontecer antes do último contato.";
+    }
   }
 
   return errors;
@@ -165,4 +204,8 @@ export function buildStats(clients: ClientRecord[]): ClientStats {
 export function buildWhatsappLink(phone: string) {
   const digits = sanitizePhone(phone);
   return `https://wa.me/${digits}`;
+}
+
+export function timelineActionLabel(entry: ClientTimelineEntry) {
+  return entry.badge ?? (entry.type === "note" ? "Nota" : "Movimentação");
 }

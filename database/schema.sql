@@ -76,6 +76,9 @@ create table if not exists public.clients (
 create index if not exists clients_status_idx on public.clients (status);
 create index if not exists clients_total_services_idx on public.clients (total_services desc);
 create index if not exists clients_updated_at_idx on public.clients (updated_at desc);
+create index if not exists clients_responsible_user_id_idx on public.clients (responsible_user_id);
+create index if not exists clients_last_contact_at_idx on public.clients (last_contact_at desc);
+create index if not exists clients_next_action_at_idx on public.clients (next_action_at desc);
 
 create table if not exists public.client_history (
   id uuid primary key default gen_random_uuid(),
@@ -100,6 +103,18 @@ create table if not exists public.client_notes (
 
 create index if not exists client_notes_client_id_idx on public.client_notes (client_id, created_at desc);
 
+create table if not exists public.admin_audit_log (
+  id uuid primary key default gen_random_uuid(),
+  actor_id uuid not null references public.profiles(id) on delete cascade,
+  target_user_id uuid not null references public.profiles(id) on delete cascade,
+  action text not null,
+  metadata jsonb,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists admin_audit_log_created_at_idx on public.admin_audit_log (created_at desc);
+create index if not exists admin_audit_log_target_user_id_idx on public.admin_audit_log (target_user_id);
+
 drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at
   before update on public.profiles
@@ -114,6 +129,7 @@ alter table public.profiles enable row level security;
 alter table public.clients enable row level security;
 alter table public.client_history enable row level security;
 alter table public.client_notes enable row level security;
+alter table public.admin_audit_log enable row level security;
 
 create or replace function public.current_app_role()
 returns text
@@ -221,5 +237,21 @@ create policy "client_notes_update_authenticated"
   to authenticated
 using (true)
   with check (true);
+
+-- Admin audit
+
+drop policy if exists "admin_audit_log_select_admin_only" on public.admin_audit_log;
+create policy "admin_audit_log_select_admin_only"
+  on public.admin_audit_log
+  for select
+  to authenticated
+using (public.current_app_role() = 'ADMIN');
+
+drop policy if exists "admin_audit_log_insert_admin_only" on public.admin_audit_log;
+create policy "admin_audit_log_insert_admin_only"
+  on public.admin_audit_log
+  for insert
+  to authenticated
+with check (public.current_app_role() = 'ADMIN' and actor_id = auth.uid());
 
 -- Base inicial sem clientes. Cadastre os registros corretos pelo sistema ou importe depois.

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
+  Filter,
   Loader2,
   Search,
   ShieldAlert,
@@ -13,6 +14,7 @@ import {
   UserX,
 } from "lucide-react";
 
+import { useToast } from "@/components/providers/toast-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +33,15 @@ type UserProfileRecord = {
   created_at: string;
 };
 
+type AuditLogRow = {
+  id: string;
+  action: string;
+  created_at: string;
+  metadata: Record<string, string | boolean | null> | null;
+  actor: { full_name: string | null; email: string | null } | { full_name: string | null; email: string | null }[] | null;
+  target: { full_name: string | null; email: string | null } | { full_name: string | null; email: string | null }[] | null;
+};
+
 type PendingAction =
   | { type: "role"; user: UserProfileRecord; nextRole: UserRole }
   | { type: "status"; user: UserProfileRecord; nextActive: boolean };
@@ -40,6 +51,8 @@ interface UserManagementPanelProps {
 }
 
 const roleOptions: UserRole[] = ["ADMIN", "SUPERVISOR", "ATTENDANT"];
+const statusOptions = ["Todos", "Ativos", "Inativos"] as const;
+type StatusFilter = (typeof statusOptions)[number];
 
 const statusBadgeClassnames: Record<"Ativo" | "Inativo", string> = {
   Ativo: "border-emerald-200 bg-emerald-50 text-emerald-700",
@@ -61,7 +74,7 @@ function EmptyState() {
       </div>
       <h3 className="mt-4 text-base font-semibold text-slate-950">Nenhum usuário encontrado</h3>
       <p className="mt-2 text-sm text-slate-500">
-        Ajuste a busca ou cadastre um novo usuário pelo fluxo de registro do sistema.
+        Ajuste a busca ou os filtros. Os usuários continuam sendo criados pelo fluxo de registro do sistema.
       </p>
     </div>
   );
@@ -105,17 +118,43 @@ function SummaryCard({
   );
 }
 
+function getProfileLabel(profile: { full_name: string | null; email: string | null } | { full_name: string | null; email: string | null }[] | null) {
+  const normalized = Array.isArray(profile) ? profile[0] : profile;
+  return normalized?.full_name ?? normalized?.email ?? "Equipe";
+}
+
+function getAuditDescription(log: AuditLogRow) {
+  const targetName = getProfileLabel(log.target);
+  const actorName = getProfileLabel(log.actor);
+
+  switch (log.action) {
+    case "role_changed":
+      return `${actorName} alterou ${targetName} para ${roleLabels[(log.metadata?.next_role as UserRole) ?? "ATTENDANT"]}.`;
+    case "user_deactivated":
+      return `${actorName} desativou ${targetName}.`;
+    case "user_activated":
+      return `${actorName} reativou ${targetName}.`;
+    default:
+      return `${actorName} realizou uma alteração administrativa em ${targetName}.`;
+  }
+}
+
 export function UserManagementPanel({ currentUserId }: UserManagementPanelProps) {
+  const { pushToast } = useToast();
   const [profiles, setProfiles] = useState<UserProfileRecord[]>([]);
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<UserRole | "Todos">("Todos");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("Todos");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AuditLogRow[]>([]);
+  const [auditLoading, setAuditLoading] = useState(true);
 
   useEffect(() => {
-    void loadProfiles();
+    void Promise.all([loadProfiles(), loadAuditLogs()]);
   }, []);
 
   async function loadProfiles() {
@@ -138,17 +177,41 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
     setLoading(false);
   }
 
+  async function loadAuditLogs() {
+    setAuditLoading(true);
+
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("admin_audit_log")
+      .select(`
+        id,
+        action,
+        created_at,
+        metadata,
+        actor:profiles!admin_audit_log_actor_id_fkey(full_name, email),
+        target:profiles!admin_audit_log_target_user_id_fkey(full_name, email)
+      `)
+      .order("created_at", { ascending: false })
+      .limit(8);
+
+    setAuditLogs((data ?? []) as AuditLogRow[]);
+    setAuditLoading(false);
+  }
+
   const filteredProfiles = useMemo(() => {
     const term = search.trim().toLowerCase();
-
-    if (!term) return profiles;
 
     return profiles.filter((profile) => {
       const name = profile.full_name?.toLowerCase() ?? "";
       const email = profile.email?.toLowerCase() ?? "";
-      return name.includes(term) || email.includes(term);
+      const matchesSearch = !term || name.includes(term) || email.includes(term);
+      const matchesRole = roleFilter === "Todos" ? true : profile.role === roleFilter;
+      const matchesStatus =
+        statusFilter === "Todos" ? true : statusFilter === "Ativos" ? profile.is_active : !profile.is_active;
+
+      return matchesSearch && matchesRole && matchesStatus;
     });
-  }, [profiles, search]);
+  }, [profiles, roleFilter, search, statusFilter]);
 
   const metrics = useMemo(() => {
     return {
@@ -159,6 +222,16 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
       inactive: profiles.filter((profile) => !profile.is_active).length,
     };
   }, [profiles]);
+
+  async function insertAuditLog(payload: { action: string; targetUserId: string; metadata?: Record<string, string | boolean | null> }) {
+    const supabase = createClient();
+    await supabase.from("admin_audit_log").insert({
+      actor_id: currentUserId,
+      target_user_id: payload.targetUserId,
+      action: payload.action,
+      metadata: payload.metadata ?? null,
+    });
+  }
 
   async function handleConfirmAction() {
     if (!pendingAction) return;
@@ -182,19 +255,45 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
 
     if (updateError) {
       setError(updateError.message || "Não foi possível salvar a alteração.");
+      pushToast({ tone: "error", title: "Falha ao atualizar usuário", description: updateError.message });
       setSavingUserId(null);
       setPendingAction(null);
       return;
     }
 
     setProfiles((current) => current.map((profile) => (profile.id === data.id ? (data as UserProfileRecord) : profile)));
-    setFeedback(
+
+    try {
+      if (pendingAction.type === "role") {
+        await insertAuditLog({
+          action: "role_changed",
+          targetUserId: pendingAction.user.id,
+          metadata: {
+            previous_role: pendingAction.user.role,
+            next_role: (data as UserProfileRecord).role,
+          },
+        });
+      } else {
+        await insertAuditLog({
+          action: pendingAction.nextActive ? "user_activated" : "user_deactivated",
+          targetUserId: pendingAction.user.id,
+          metadata: { next_active: pendingAction.nextActive },
+        });
+      }
+      await loadAuditLogs();
+    } catch {
+      // best effort: the core user update already succeeded.
+    }
+
+    const successMessage =
       pendingAction.type === "role"
         ? `Perfil de ${pendingAction.user.full_name ?? pendingAction.user.email ?? "usuário"} atualizado para ${roleLabels[(data as UserProfileRecord).role]}.`
         : pendingAction.nextActive
           ? `Usuário ${pendingAction.user.full_name ?? pendingAction.user.email ?? ""} reativado com sucesso.`
-          : `Usuário ${pendingAction.user.full_name ?? pendingAction.user.email ?? ""} desativado com sucesso.`,
-    );
+          : `Usuário ${pendingAction.user.full_name ?? pendingAction.user.email ?? ""} desativado com sucesso.`;
+
+    setFeedback(successMessage);
+    pushToast({ tone: "success", title: "Alteração salva", description: successMessage });
     setSavingUserId(null);
     setPendingAction(null);
   }
@@ -244,7 +343,7 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
             </div>
             <h2 className="text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">Equipe, cargos e status de acesso</h2>
             <p className="max-w-3xl text-sm text-slate-500 sm:text-[15px]">
-              Atualize cargos e status sem sair do painel. As mudanças são persistidas no Supabase e refletidas imediatamente na listagem.
+              Atualize cargos e status sem sair do painel. A busca agora aceita filtros por cargo e atividade, e a trilha de auditoria mostra as últimas mudanças feitas por administradores.
             </p>
           </div>
 
@@ -258,7 +357,7 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
           </div>
         </div>
 
-        <div className="grid gap-3 rounded-[22px] border border-slate-200 bg-slate-50 p-3 sm:p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="grid gap-3 rounded-[22px] border border-slate-200 bg-slate-50 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_180px_170px_auto] xl:items-center">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <Input
@@ -268,7 +367,34 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
               placeholder="Buscar por nome ou e-mail"
             />
           </div>
-          <div className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600">
+
+          <select
+            value={roleFilter}
+            onChange={(event) => setRoleFilter(event.target.value as UserRole | "Todos")}
+            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <option value="Todos">Todos os cargos</option>
+            {roleOptions.map((role) => (
+              <option key={role} value={role}>
+                {roleLabels[role]}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            {statusOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+
+          <div className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600">
+            <Filter className="size-4 text-slate-400" />
             {filteredProfiles.length} usuário(s)
           </div>
         </div>
@@ -434,6 +560,65 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
             </div>
           </>
         )}
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        <Card>
+          <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
+            <CardTitle>Últimas ações administrativas</CardTitle>
+            <CardDescription>
+              Mudanças recentes de cargos e status feitas por contas admin. Isso ajuda na auditoria do sistema.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 p-4 pt-0 sm:p-6 sm:pt-0">
+            {auditLoading ? (
+              <div className="flex min-h-[180px] items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-slate-50/70">
+                <div className="flex items-center gap-3 text-sm font-medium text-slate-500">
+                  <Loader2 className="size-4 animate-spin" />
+                  Carregando trilha administrativa...
+                </div>
+              </div>
+            ) : auditLogs.length === 0 ? (
+              <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50/80 px-5 py-10 text-center">
+                <p className="font-medium text-slate-900">Nenhuma ação administrativa registrada ainda.</p>
+                <p className="mt-1 text-sm text-slate-500">As mudanças de cargo e ativação vão aparecer aqui automaticamente.</p>
+              </div>
+            ) : (
+              auditLogs.map((log) => (
+                <div key={log.id} className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">
+                      {log.action === "role_changed" ? "Cargo" : log.action === "user_activated" ? "Reativação" : "Desativação"}
+                    </Badge>
+                    <p className="text-sm font-medium text-slate-950">{getAuditDescription(log)}</p>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-400">{formatDate(log.created_at)}</p>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
+            <CardTitle>Resumo administrativo</CardTitle>
+            <CardDescription>Atalhos mentais para revisar a equipe antes de mexer em acessos.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 p-4 pt-0 text-sm text-slate-600 sm:p-6 sm:pt-0">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <p className="font-medium text-slate-900">{metrics.inactive} conta(s) inativa(s)</p>
+              <p className="mt-1 text-slate-500">Use este número para revisar contas desligadas ou acesso temporariamente suspenso.</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <p className="font-medium text-slate-900">{metrics.admins} admin(s) ativo(s)</p>
+              <p className="mt-1 text-slate-500">Evite excesso de administradores e mantenha a governança centralizada.</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <p className="font-medium text-slate-900">{filteredProfiles.length} usuário(s) no filtro atual</p>
+              <p className="mt-1 text-slate-500">Combine busca, cargo e status para encontrar a pessoa certa mais rápido.</p>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       {pendingAction ? (

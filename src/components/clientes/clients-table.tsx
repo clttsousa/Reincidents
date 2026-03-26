@@ -1,21 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
+  Clock3,
   Copy,
-  ExternalLink,
   MessageCircle,
   Pencil,
   PhoneCall,
   Plus,
   Search,
   ShieldAlert,
+  Sparkles,
   UserRound,
   X,
 } from "lucide-react";
 
 import { ClientFormSheet } from "@/components/clientes/client-form-sheet";
+import { ClientTimelineSheet } from "@/components/clientes/client-timeline-sheet";
 import { useClients } from "@/components/providers/clients-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -32,7 +35,6 @@ import {
   statusOptions,
   statusStyles,
 } from "@/lib/client-helpers";
-import { assigneeOptions } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import type { ClientRecord, ClientStatus } from "@/types/mock";
 
@@ -44,46 +46,79 @@ const quickFilters: Array<{ label: string; value: "Todos" | ClientStatus }> = [
   { label: "Sem retorno", value: "Sem retorno" },
 ];
 
-function MetricCard({ label, value, className }: { label: string; value: string; className?: string }) {
+function MetricCard({ label, value, helper, className }: { label: string; value: string; helper?: string; className?: string }) {
   return (
-    <div className={cn("rounded-[22px] border border-slate-200 bg-white p-4", className)}>
+    <div className={cn("rounded-[22px] border border-slate-200 bg-white p-4 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.16)]", className)}>
       <p className="text-xs text-slate-500 sm:text-sm">{label}</p>
       <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">{value}</p>
+      {helper ? <p className="mt-1 text-xs text-slate-400">{helper}</p> : null}
     </div>
   );
 }
 
-function EmptyState({ onClear }: { onClear: () => void }) {
+function LoadingState() {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div key={index} className={cn("h-[92px] animate-pulse rounded-[22px] border border-slate-200 bg-white/70", index === 0 && "col-span-2 xl:col-span-1")} />
+        ))}
+      </div>
+      <div className="rounded-[28px] border border-slate-200 bg-white p-6">
+        <div className="h-11 animate-pulse rounded-2xl bg-slate-100" />
+        <div className="mt-4 space-y-3">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="h-[92px] animate-pulse rounded-[22px] bg-slate-100/80" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ onClear, onCreate }: { onClear: () => void; onCreate: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-4 py-14 text-center">
       <div className="flex size-12 items-center justify-center rounded-full bg-white text-slate-500">
         <Search className="size-5" />
       </div>
       <h3 className="mt-4 text-lg font-semibold text-slate-950">Nenhum cliente encontrado</h3>
-      <p className="mt-2 max-w-md text-sm text-slate-500">Ajuste os filtros ou limpe a busca para voltar a exibir a base completa.</p>
-      <Button variant="outline" className="mt-5" onClick={onClear}>
-        Limpar filtros
-      </Button>
+      <p className="mt-2 max-w-md text-sm text-slate-500">
+        Se a base estiver vazia, crie o primeiro cliente. Se você estiver usando filtros, limpe-os para voltar a exibir a carteira completa.
+      </p>
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+        <Button variant="outline" onClick={onClear}>
+          Limpar filtros
+        </Button>
+        <Button onClick={onCreate}>
+          <Plus className="size-4" />
+          Novo cliente
+        </Button>
+      </div>
     </div>
   );
 }
 
 export function ClientsTable() {
-  const { clients, stats, staleClients, addClient, updateClient, updateClientStatus } = useClients();
+  const searchParams = useSearchParams();
+  const { clients, stats, staleClients, assignees, loading, formSubmitting, updatingClientId, addClient, updateClient, updateClientStatus } = useClients();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<(typeof quickFilters)[number]["value"]>("Todos");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("Todos");
   const [criticalOnly, setCriticalOnly] = useState(false);
   const [staleOnly, setStaleOnly] = useState(false);
+  const [osFilter, setOsFilter] = useState<"Todos" | "Com O.S." | "Sem O.S.">( "Todos" );
+  const [resolvedFilter, setResolvedFilter] = useState<"Todos" | "Resolvidos" | "Pendentes">("Todos");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [timelineOpen, setTimelineOpen] = useState(false);
   const [sheetMode, setSheetMode] = useState<"create" | "edit">("create");
-  const [selectedClient, setSelectedClient] = useState<ClientRecord | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [copiedClientId, setCopiedClientId] = useState<string | null>(null);
 
   useEffect(() => {
     const openCreate = () => {
       setSheetMode("create");
-      setSelectedClient(null);
+      setSelectedClientId(null);
       setSheetOpen(true);
     };
 
@@ -93,19 +128,45 @@ export function ClientsTable() {
 
   useEffect(() => {
     if (!copiedClientId) return;
-
     const timeout = window.setTimeout(() => setCopiedClientId(null), 1800);
     return () => window.clearTimeout(timeout);
   }, [copiedClientId]);
+  useEffect(() => {
+    const view = searchParams.get("view");
+    const assignee = searchParams.get("assignee");
+
+    setActiveFilter(
+      view === "waiting"
+        ? "Aguardando contato"
+        : view === "os"
+          ? "O.S. aberta"
+          : view === "resolved"
+            ? "Resolvido"
+            : view === "no-return"
+              ? "Sem retorno"
+              : "Todos",
+    );
+    setCriticalOnly(view === "critical");
+    setStaleOnly(view === "stale");
+    setAssigneeFilter(view === "unassigned" ? "Sem responsável" : assignee ?? "Todos");
+    setOsFilter(view === "os" ? "Com O.S." : "Todos");
+    setResolvedFilter(view === "resolved" ? "Resolvidos" : view === "critical" || view === "waiting" || view === "no-return" || view === "unassigned" ? "Pendentes" : "Todos");
+  }, [searchParams]);
+
+
+  const activeAssignees = useMemo(() => assignees.filter((assignee) => assignee.isActive), [assignees]);
+  const selectedClient = useMemo(() => clients.find((client) => client.id === selectedClientId) ?? null, [clients, selectedClientId]);
 
   const filteredClients = useMemo(() => {
     const term = search.trim().toLowerCase();
 
     return clients.filter((client) => {
       const matchesStatus = activeFilter === "Todos" ? true : client.status === activeFilter;
-      const matchesAssignee = assigneeFilter === "Todos" ? true : client.assignee === assigneeFilter;
+      const matchesAssignee = assigneeFilter === "Todos" ? true : assigneeFilter === "Sem responsável" ? !client.responsibleUserId : client.responsibleUserId === assigneeFilter;
       const matchesCritical = criticalOnly ? isCriticalClient(client) : true;
       const matchesStale = staleOnly ? isStaleClient(client) : true;
+      const matchesOs = osFilter === "Todos" ? true : osFilter === "Com O.S." ? client.osOpen : !client.osOpen;
+      const matchesResolved = resolvedFilter === "Todos" ? true : resolvedFilter === "Resolvidos" ? client.resolved : !client.resolved;
       const matchesSearch =
         term.length === 0 ||
         client.name.toLowerCase().includes(term) ||
@@ -114,9 +175,9 @@ export function ClientsTable() {
         client.assignee.toLowerCase().includes(term) ||
         client.osNumber.toLowerCase().includes(term);
 
-      return matchesStatus && matchesAssignee && matchesCritical && matchesStale && matchesSearch;
+      return matchesStatus && matchesAssignee && matchesCritical && matchesStale && matchesOs && matchesResolved && matchesSearch;
     });
-  }, [activeFilter, assigneeFilter, clients, criticalOnly, search, staleOnly]);
+  }, [activeFilter, assigneeFilter, clients, criticalOnly, osFilter, resolvedFilter, search, staleOnly]);
 
   const handleCopyPhone = async (client: ClientRecord) => {
     const text = formatPhone(client.phone);
@@ -131,25 +192,31 @@ export function ClientsTable() {
 
   const openCreateSheet = () => {
     setSheetMode("create");
-    setSelectedClient(null);
+    setSelectedClientId(null);
     setSheetOpen(true);
   };
 
   const openEditSheet = (client: ClientRecord) => {
     setSheetMode("edit");
-    setSelectedClient(client);
+    setSelectedClientId(client.id);
     setSheetOpen(true);
   };
 
-  const handleSave = (values: Parameters<typeof addClient>[0]) => {
+  const openTimeline = (client: ClientRecord) => {
+    setSelectedClientId(client.id);
+    setTimelineOpen(true);
+  };
+
+  const handleSave = async (values: Parameters<typeof addClient>[0]) => {
     if (sheetMode === "create") {
-      addClient(values);
-      return;
+      return addClient(values);
     }
 
     if (selectedClient) {
-      updateClient(selectedClient.id, values);
+      return updateClient(selectedClient.id, values);
     }
+
+    return false;
   };
 
   const clearFilters = () => {
@@ -158,17 +225,23 @@ export function ClientsTable() {
     setAssigneeFilter("Todos");
     setCriticalOnly(false);
     setStaleOnly(false);
+    setOsFilter("Todos");
+    setResolvedFilter("Todos");
   };
+
+  if (loading) {
+    return <LoadingState />;
+  }
 
   return (
     <>
       <div className="space-y-4 sm:space-y-5">
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
-          <MetricCard label="Total" value={String(stats.total)} className="col-span-2 xl:col-span-1" />
-          <MetricCard label="Aguardando contato" value={String(stats.waiting)} />
-          <MetricCard label="O.S. abertas" value={String(stats.os)} />
-          <MetricCard label="Resolvidos" value={String(stats.solved)} />
-          <MetricCard label="Sem retorno" value={String(stats.noReturn)} />
+          <MetricCard label="Total" value={String(stats.total)} helper="Carteira recorrente" className="col-span-2 xl:col-span-1" />
+          <MetricCard label="Aguardando contato" value={String(stats.waiting)} helper="Precisa de retorno" />
+          <MetricCard label="O.S. abertas" value={String(stats.os)} helper="Em andamento" />
+          <MetricCard label="Resolvidos" value={String(stats.solved)} helper="Concluídos" />
+          <MetricCard label="Sem retorno" value={String(stats.noReturn)} helper="Sem resposta" />
         </div>
 
         {staleClients.length > 0 ? (
@@ -179,7 +252,7 @@ export function ClientsTable() {
               </div>
               <div>
                 <p className="font-medium text-amber-950">{staleClients.length} clientes sem atualização há 3 dias ou mais</p>
-                <p className="mt-1 text-sm text-amber-900/80">Ative o filtro para priorizar esses casos.</p>
+                <p className="mt-1 text-sm text-amber-900/80">Ative o filtro para priorizar esses casos mais antigos.</p>
               </div>
             </div>
             <Button variant="outline" className="border-amber-200 bg-white text-amber-900 hover:bg-amber-100" onClick={() => setStaleOnly((current) => !current)}>
@@ -192,7 +265,7 @@ export function ClientsTable() {
         <div className="surface-card rounded-[24px] p-4 sm:rounded-[28px] sm:p-5 md:p-6">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row lg:items-center">
-              <div className="relative w-full lg:w-[340px] lg:flex-none">
+              <div className="relative w-full lg:w-[360px] lg:flex-none">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 <Input
                   value={search}
@@ -214,7 +287,6 @@ export function ClientsTable() {
             <div className="flex min-w-max gap-2 px-1">
               {quickFilters.map((filter) => {
                 const isActive = activeFilter === filter.value;
-
                 return (
                   <button
                     key={filter.label}
@@ -232,18 +304,31 @@ export function ClientsTable() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 rounded-[22px] border border-slate-200 bg-slate-50 p-3 sm:p-4 lg:grid-cols-[220px_170px_170px_auto]">
+          <div className="mt-4 grid gap-3 rounded-[22px] border border-slate-200 bg-slate-50 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_170px_150px_150px_150px_auto]">
             <select
               value={assigneeFilter}
               onChange={(event) => setAssigneeFilter(event.target.value)}
               className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             >
               <option value="Todos">Todos os responsáveis</option>
-              {assigneeOptions.map((assignee) => (
-                <option key={assignee} value={assignee}>
-                  {assignee}
+              <option value="Sem responsável">Sem responsável</option>
+              {activeAssignees.map((assignee) => (
+                <option key={assignee.id} value={assignee.id}>
+                  {assignee.name}
                 </option>
               ))}
+            </select>
+
+            <select value={osFilter} onChange={(event) => setOsFilter(event.target.value as typeof osFilter)} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+              <option value="Todos">Todas as O.S.</option>
+              <option value="Com O.S.">Com O.S.</option>
+              <option value="Sem O.S.">Sem O.S.</option>
+            </select>
+
+            <select value={resolvedFilter} onChange={(event) => setResolvedFilter(event.target.value as typeof resolvedFilter)} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+              <option value="Todos">Todos os casos</option>
+              <option value="Resolvidos">Resolvidos</option>
+              <option value="Pendentes">Pendentes</option>
             </select>
 
             <button
@@ -254,7 +339,7 @@ export function ClientsTable() {
                 criticalOnly ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-white text-slate-600",
               )}
             >
-              <ShieldAlert className="size-4" />
+              <Sparkles className="size-4" />
               Críticos
             </button>
 
@@ -266,7 +351,7 @@ export function ClientsTable() {
                 staleOnly ? "border-rose-300 bg-rose-50 text-rose-900" : "border-slate-200 bg-white text-slate-600",
               )}
             >
-              <AlertTriangle className="size-4" />
+              <Clock3 className="size-4" />
               Sem atualização
             </button>
 
@@ -276,31 +361,47 @@ export function ClientsTable() {
             </Button>
           </div>
 
+          {(activeFilter !== "Todos" || assigneeFilter !== "Todos" || criticalOnly || staleOnly || osFilter !== "Todos" || resolvedFilter !== "Todos") ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {activeFilter !== "Todos" ? <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">Status: {activeFilter}</Badge> : null}
+              {assigneeFilter !== "Todos" ? (
+                <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">
+                  Responsável: {assigneeFilter === "Sem responsável" ? "Sem responsável" : activeAssignees.find((assignee) => assignee.id === assigneeFilter)?.name ?? "Equipe"}
+                </Badge>
+              ) : null}
+              {criticalOnly ? <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">Somente críticos</Badge> : null}
+              {staleOnly ? <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">Sem atualização</Badge> : null}
+              {osFilter !== "Todos" ? <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">{osFilter}</Badge> : null}
+              {resolvedFilter !== "Todos" ? <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">{resolvedFilter}</Badge> : null}
+            </div>
+          ) : null}
+
           <div className="mt-4 overflow-hidden rounded-[24px] border border-slate-200 bg-white">
-            <div className="hidden grid-cols-[minmax(240px,1.3fr)_180px_110px_170px_150px_130px_120px_200px] gap-4 border-b border-slate-200 bg-slate-50 px-6 py-4 text-sm font-medium text-slate-500 lg:grid">
+            <div className="hidden grid-cols-[minmax(240px,1.2fr)_180px_90px_170px_160px_140px_120px_220px] gap-4 border-b border-slate-200 bg-slate-50 px-6 py-4 text-sm font-medium text-slate-500 lg:grid">
               <span>Cliente</span>
               <span>Telefone</span>
               <span>Atend.</span>
               <span>Status</span>
               <span>Responsável</span>
+              <span>Próxima ação</span>
               <span>O.S.</span>
-              <span>Resolvido</span>
               <span>Ações</span>
             </div>
 
             <div className="space-y-0 divide-y divide-slate-200">
               {filteredClients.length === 0 ? (
                 <div className="p-4">
-                  <EmptyState onClear={clearFilters} />
+                  <EmptyState onClear={clearFilters} onCreate={openCreateSheet} />
                 </div>
               ) : (
                 filteredClients.map((client) => {
                   const isCritical = isCriticalClient(client);
                   const isStale = isStaleClient(client);
+                  const rowBusy = updatingClientId === client.id;
 
                   return (
                     <div key={client.id} className={cn("relative px-4 py-5 transition duration-200 hover:bg-slate-50/70 lg:px-6", isCritical && "bg-amber-50/25")}>
-                      <div className="hidden grid-cols-[minmax(240px,1.3fr)_180px_110px_170px_150px_130px_120px_200px] items-start gap-4 lg:grid">
+                      <div className="hidden grid-cols-[minmax(240px,1.2fr)_180px_90px_170px_160px_140px_120px_220px] items-start gap-4 lg:grid">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="font-semibold text-slate-950">{client.name}</p>
@@ -318,12 +419,7 @@ export function ClientsTable() {
                               <Copy className="size-3.5" />
                               {copiedClientId === client.id ? "Copiado" : "Copiar"}
                             </Button>
-                            <a
-                              href={buildWhatsappLink(client.phone)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "rounded-full px-3")}
-                            >
+                            <a href={buildWhatsappLink(client.phone)} target="_blank" rel="noreferrer" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "rounded-full px-3")}>
                               <MessageCircle className="size-3.5" />
                               WhatsApp
                             </a>
@@ -340,9 +436,10 @@ export function ClientsTable() {
                           <select
                             aria-label={`Alterar status de ${client.name}`}
                             value={client.status}
-                            onChange={(event) => updateClientStatus(client.id, event.target.value as ClientStatus)}
+                            disabled={rowBusy}
+                            onChange={(event) => void updateClientStatus(client.id, event.target.value as ClientStatus)}
                             className={cn(
-                              "h-10 w-full appearance-none rounded-full border px-4 text-sm font-semibold outline-none transition focus-visible:ring-4 focus-visible:ring-ring/50",
+                              "h-10 w-full appearance-none rounded-full border px-4 text-sm font-semibold outline-none transition focus-visible:ring-4 focus-visible:ring-ring/50 disabled:opacity-60",
                               statusStyles[client.status],
                             )}
                           >
@@ -352,50 +449,41 @@ export function ClientsTable() {
                               </option>
                             ))}
                           </select>
+                          {rowBusy ? <p className="mt-2 text-xs font-medium text-slate-400">Salvando status...</p> : null}
                         </div>
 
                         <div>
                           <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                             <UserRound className="size-4 text-slate-400" />
-                            {client.assignee}
+                            <span className="truncate">{client.assignee}</span>
                           </div>
                         </div>
 
                         <div>
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "rounded-full px-3 py-1 text-sm",
-                              client.osOpen ? "border-sky-200 bg-sky-50 text-sky-900" : "border-slate-200 bg-white text-slate-600",
-                            )}
-                          >
-                            {getOsLabel(client)}
-                          </Badge>
-                          {client.osNumber ? <p className="mt-2 text-xs text-slate-400">{client.osNumber}</p> : null}
+                          <div className={cn("rounded-xl border px-3 py-2 text-sm", client.nextActionAt ? "border-slate-200 bg-slate-50 text-slate-700" : "border-dashed border-slate-200 bg-white text-slate-400")}>
+                            {client.nextActionAt ? formatDateLabel(client.nextActionAt) : "Sem agenda"}
+                          </div>
                         </div>
 
-                        <div>
-                          <Badge className={cn(client.resolved ? "bg-emerald-100 text-emerald-900" : "bg-slate-100 text-slate-600")}>
-                            {getResolvedLabel(client)}
+                        <div className="space-y-2">
+                          <Badge variant="outline" className="w-fit rounded-full border-slate-200 bg-white text-slate-700">
+                            {getOsLabel(client)}
                           </Badge>
+                          <p className="text-xs text-slate-400">Resolvido: {getResolvedLabel(client)}</p>
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                          <a href={`tel:${sanitizePhone(client.phone)}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "rounded-full px-3")}>
-                            <PhoneCall className="size-3.5" />
-                            Contato
-                          </a>
+                          <Button variant="outline" size="sm" className="rounded-full px-3" onClick={() => openTimeline(client)}>
+                            <Clock3 className="size-3.5" />
+                            Histórico
+                          </Button>
                           <Button variant="outline" size="sm" className="rounded-full px-3" onClick={() => openEditSheet(client)}>
                             <Pencil className="size-3.5" />
                             Editar
                           </Button>
-                          <a
-                            href={buildWhatsappLink(client.phone)}
-                            target="_blank"
-                            rel="noreferrer"
-                            className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-8 rounded-full text-slate-500")}
-                          >
-                            <ExternalLink className="size-4" />
+                          <a href={`tel:${client.phone}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "rounded-full px-3")}>
+                            <PhoneCall className="size-3.5" />
+                            Ligar
                           </a>
                         </div>
                       </div>
@@ -406,96 +494,70 @@ export function ClientsTable() {
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="font-semibold text-slate-950">{client.name}</p>
                               {isCritical ? <Badge className="bg-amber-100 text-amber-900">Crítico</Badge> : null}
-                              {isStale ? <Badge className="bg-rose-100 text-rose-900">Atrasado</Badge> : null}
                             </div>
                             <p className="mt-1 text-sm text-slate-500">{formatPhone(client.phone)}</p>
+                            <p className="mt-2 text-xs text-slate-400">Atualizado {formatDateLabel(client.updatedAt)}</p>
                           </div>
-                          <Badge variant="outline" className="shrink-0 rounded-full border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-700">
+                          <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">
                             {client.totalServices}x
                           </Badge>
                         </div>
 
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Responsável</p>
+                            <p className="mt-1 text-sm font-medium text-slate-900">{client.assignee}</p>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Próxima ação</p>
+                            <p className="mt-1 text-sm font-medium text-slate-900">{client.nextActionAt ? formatDateLabel(client.nextActionAt) : "Sem agenda"}</p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <select
+                            aria-label={`Alterar status de ${client.name}`}
+                            value={client.status}
+                            disabled={rowBusy}
+                            onChange={(event) => void updateClientStatus(client.id, event.target.value as ClientStatus)}
+                            className={cn(
+                              "h-11 w-full appearance-none rounded-2xl border px-4 text-sm font-semibold outline-none transition focus-visible:ring-4 focus-visible:ring-ring/50 disabled:opacity-60",
+                              statusStyles[client.status],
+                            )}
+                          >
+                            {statusOptions.map((status) => (
+                              <option key={status} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                          {rowBusy ? <p className="mt-2 text-xs font-medium text-slate-400">Salvando...</p> : null}
+                        </div>
+
                         {client.description ? <p className="text-sm leading-6 text-slate-500">{client.description}</p> : null}
 
-                        <div className="grid gap-3">
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <div>
-                              <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Status</p>
-                              <select
-                                aria-label={`Alterar status de ${client.name}`}
-                                value={client.status}
-                                onChange={(event) => updateClientStatus(client.id, event.target.value as ClientStatus)}
-                                className={cn(
-                                  "h-11 w-full appearance-none rounded-2xl border px-4 text-sm font-semibold outline-none transition focus-visible:ring-4 focus-visible:ring-ring/50",
-                                  statusStyles[client.status],
-                                )}
-                              >
-                                {statusOptions.map((status) => (
-                                  <option key={status} value={status}>
-                                    {status}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Responsável</p>
-                              <div className="inline-flex h-11 w-full items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                                <UserRound className="size-4 text-slate-400" />
-                                {client.assignee}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
-                              <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">O.S.</p>
-                              <p className="mt-2 font-medium text-slate-950">{getOsLabel(client)}</p>
-                              {client.osNumber ? <p className="mt-1 text-xs text-slate-400">{client.osNumber}</p> : null}
-                            </div>
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
-                              <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Resolvido</p>
-                              <p className="mt-2 font-medium text-slate-950">{getResolvedLabel(client)}</p>
-                            </div>
-                          </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">O.S.: {getOsLabel(client)}</div>
+                          <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">Resolvido: {getResolvedLabel(client)}</div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button variant="outline" size="sm" className="h-10 justify-center rounded-2xl px-3" onClick={() => handleCopyPhone(client)}>
-                            <Copy className="size-3.5" />
-                            {copiedClientId === client.id ? "Copiado" : "Copiar"}
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <Button variant="outline" className="justify-center" onClick={() => handleCopyPhone(client)}>
+                            <Copy className="size-4" />
+                            {copiedClientId === client.id ? "Copiado" : "Copiar telefone"}
                           </Button>
-                          <a
-                            href={`tel:${sanitizePhone(client.phone)}`}
-                            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-10 justify-center rounded-2xl px-3")}
-                          >
-                            <PhoneCall className="size-3.5" />
-                            Ligar
-                          </a>
-                          <a
-                            href={buildWhatsappLink(client.phone)}
-                            target="_blank"
-                            rel="noreferrer"
-                            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-10 justify-center rounded-2xl px-3")}
-                          >
-                            <MessageCircle className="size-3.5" />
+                          <a href={buildWhatsappLink(client.phone)} target="_blank" rel="noreferrer" className={cn(buttonVariants({ variant: "outline" }), "justify-center")}>
+                            <MessageCircle className="size-4" />
                             WhatsApp
                           </a>
-                          <Button variant="outline" size="sm" className="h-10 justify-center rounded-2xl px-3" onClick={() => openEditSheet(client)}>
-                            <Pencil className="size-3.5" />
+                          <Button variant="outline" className="justify-center" onClick={() => openTimeline(client)}>
+                            <Clock3 className="size-4" />
+                            Histórico
+                          </Button>
+                          <Button variant="outline" className="justify-center" onClick={() => openEditSheet(client)}>
+                            <Pencil className="size-4" />
                             Editar
                           </Button>
-                        </div>
-
-                        <div className="flex items-center justify-between gap-3 text-xs text-slate-400">
-                          <p>Atualizado {formatDateLabel(client.updatedAt)}</p>
-                          <a
-                            href={buildWhatsappLink(client.phone)}
-                            target="_blank"
-                            rel="noreferrer"
-                            className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-8 rounded-full text-slate-500")}
-                          >
-                            <ExternalLink className="size-4" />
-                          </a>
                         </div>
                       </div>
                     </div>
@@ -514,7 +576,16 @@ export function ClientsTable() {
         </Button>
       </div>
 
-      <ClientFormSheet open={sheetOpen} mode={sheetMode} client={selectedClient} onClose={() => setSheetOpen(false)} onSubmit={handleSave} />
+      <ClientFormSheet
+        open={sheetOpen}
+        mode={sheetMode}
+        client={selectedClient}
+        assignees={activeAssignees}
+        submitting={formSubmitting}
+        onClose={() => setSheetOpen(false)}
+        onSubmit={handleSave}
+      />
+      <ClientTimelineSheet open={timelineOpen} client={selectedClient} onClose={() => setTimelineOpen(false)} />
     </>
   );
 }

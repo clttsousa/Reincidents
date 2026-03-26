@@ -1,0 +1,197 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { Clock3, Loader2, MessageSquarePlus, PhoneOutgoing, TimerReset, X } from "lucide-react";
+
+import { useClients } from "@/components/providers/clients-provider";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { formatDateLabel, formatPhone } from "@/lib/client-helpers";
+import { cn } from "@/lib/utils";
+import type { ClientRecord, ClientTimelineEntry } from "@/types/mock";
+
+interface ClientTimelineSheetProps {
+  open: boolean;
+  client: ClientRecord | null;
+  onClose: () => void;
+}
+
+export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineSheetProps) {
+  const { fetchClientTimeline, addClientNote, registerContactAttempt, updatingClientId } = useClients();
+  const [timeline, setTimeline] = useState<ClientTimelineEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [note, setNote] = useState("");
+  const [contactNote, setContactNote] = useState("");
+  const [nextActionAt, setNextActionAt] = useState("");
+
+  useEffect(() => {
+    if (!open || !client) return;
+
+    let active = true;
+
+    async function loadTimeline() {
+      setLoading(true);
+      try {
+        const entries = await fetchClientTimeline(client.id);
+        if (active) {
+          setTimeline(entries);
+          setNote("");
+          setContactNote("");
+          setNextActionAt(client.nextActionAt ? new Date(client.nextActionAt).toISOString().slice(0, 16) : "");
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void loadTimeline();
+    return () => {
+      active = false;
+    };
+  }, [client, fetchClientTimeline, open]);
+
+  const busy = Boolean(client && updatingClientId === client.id);
+  const overdueNextAction = useMemo(() => {
+    if (!client?.nextActionAt) return false;
+    return new Date(client.nextActionAt).getTime() < Date.now();
+  }, [client?.nextActionAt]);
+
+  const handleAddNote = async () => {
+    if (!client) return;
+    const success = await addClientNote(client.id, note);
+    if (!success) return;
+    setNote("");
+    const entries = await fetchClientTimeline(client.id);
+    setTimeline(entries);
+  };
+
+  const handleRegisterContact = async () => {
+    if (!client) return;
+    const success = await registerContactAttempt(client.id, {
+      description: contactNote,
+      nextActionAt: nextActionAt ? new Date(nextActionAt).toISOString() : "",
+    });
+    if (!success) return;
+    setContactNote("");
+    const entries = await fetchClientTimeline(client.id);
+    setTimeline(entries);
+  };
+
+  if (!open || !client) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-end bg-slate-950/35 backdrop-blur-sm md:items-stretch">
+      <button aria-label="Fechar timeline" className="h-full flex-1 cursor-default" onClick={busy ? undefined : onClose} type="button" />
+      <div className="relative h-[94dvh] w-full overflow-y-auto rounded-t-[28px] border border-white/70 bg-white/95 shadow-2xl md:h-full md:max-w-2xl md:rounded-none md:border-y-0 md:border-r-0 md:border-l">
+        <div className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/92 px-4 py-4 backdrop-blur sm:px-5 md:px-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <Badge className="bg-slate-950 text-white">Timeline do cliente</Badge>
+              <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-950">{client.name}</h2>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                <span>{formatPhone(client.phone)}</span>
+                <span>•</span>
+                <span>{client.assignee}</span>
+                {client.nextActionAt ? (
+                  <Badge className={cn("border text-[11px] font-semibold", overdueNextAction ? "border-rose-200 bg-rose-50 text-rose-700" : "border-slate-200 bg-slate-50 text-slate-700")}>
+                    Próxima ação {formatDateLabel(client.nextActionAt)}
+                  </Badge>
+                ) : null}
+              </div>
+            </div>
+            <Button type="button" variant="outline" size="icon" onClick={onClose} disabled={busy}>
+              <X className="size-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-5 px-4 py-4 sm:px-5 md:px-6 md:py-5">
+          <section className="grid gap-4 rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-white bg-white px-4 py-3 shadow-sm">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Último contato</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{client.lastContactAt ? formatDateLabel(client.lastContactAt) : "Ainda não registrado"}</p>
+              </div>
+              <div className="rounded-2xl border border-white bg-white px-4 py-3 shadow-sm">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Status atual</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{client.status}</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-[24px] border border-slate-200 bg-white p-4">
+              <div className="flex items-center gap-2">
+                <MessageSquarePlus className="size-4 text-slate-500" />
+                <h3 className="font-semibold text-slate-950">Adicionar observação</h3>
+              </div>
+              <p className="mt-1 text-sm text-slate-500">Use para registrar contexto, decisão ou algum detalhe interno importante.</p>
+              <Textarea value={note} onChange={(event) => setNote(event.target.value)} className="mt-4 min-h-[132px]" placeholder="Escreva uma observação rápida para a equipe." />
+              <Button className="mt-3 w-full sm:w-auto" onClick={handleAddNote} disabled={busy || note.trim().length < 3}>
+                {busy ? <Loader2 className="size-4 animate-spin" /> : <MessageSquarePlus className="size-4" />}
+                Salvar observação
+              </Button>
+            </div>
+
+            <div className="rounded-[24px] border border-slate-200 bg-white p-4">
+              <div className="flex items-center gap-2">
+                <PhoneOutgoing className="size-4 text-slate-500" />
+                <h3 className="font-semibold text-slate-950">Registrar tentativa de contato</h3>
+              </div>
+              <p className="mt-1 text-sm text-slate-500">Atualize o último contato e, se necessário, agende a próxima ação.</p>
+              <Textarea value={contactNote} onChange={(event) => setContactNote(event.target.value)} className="mt-4 min-h-[96px]" placeholder="Resumo do retorno, sem retorno ou orientação passada ao cliente." />
+              <div className="mt-3">
+                <label className="mb-2 block text-sm font-medium text-slate-800">Próxima ação</label>
+                <Input type="datetime-local" value={nextActionAt} onChange={(event) => setNextActionAt(event.target.value)} />
+              </div>
+              <Button className="mt-3 w-full sm:w-auto" onClick={handleRegisterContact} disabled={busy}>
+                {busy ? <Loader2 className="size-4 animate-spin" /> : <TimerReset className="size-4" />}
+                Registrar contato
+              </Button>
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Clock3 className="size-4 text-slate-500" />
+              <h3 className="font-semibold text-slate-950">Histórico cronológico</h3>
+            </div>
+
+            {loading ? (
+              <div className="flex min-h-[220px] items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-slate-50/70">
+                <div className="flex items-center gap-3 text-sm font-medium text-slate-500">
+                  <Loader2 className="size-4 animate-spin" />
+                  Carregando timeline...
+                </div>
+              </div>
+            ) : timeline.length === 0 ? (
+              <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50/80 px-5 py-10 text-center">
+                <p className="font-medium text-slate-900">Nenhuma movimentação registrada ainda.</p>
+                <p className="mt-1 text-sm text-slate-500">As mudanças de status, notas e tentativas de contato vão aparecer aqui.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {timeline.map((entry) => (
+                  <div key={entry.id} className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.16)]">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={entry.type === "note" ? "secondary" : "outline"} className="uppercase tracking-[0.14em]">{entry.badge ?? (entry.type === "note" ? "Nota" : "Evento")}</Badge>
+                      <p className="font-semibold text-slate-950">{entry.title}</p>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{entry.description}</p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-400">
+                      <span>{entry.actorName}</span>
+                      <span>•</span>
+                      <span>{formatDateLabel(entry.createdAt)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
