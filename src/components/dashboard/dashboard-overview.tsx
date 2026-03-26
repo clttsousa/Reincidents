@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  ArrowRight,
   CheckCircle2,
-  CircleDashed,
   Clock3,
   FileText,
+  Gauge,
   PhoneCall,
   Sparkles,
+  TrendingDown,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -16,8 +19,17 @@ import {
 import { useClients } from "@/components/providers/clients-provider";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatDateLabel, formatPhone, isCriticalClient, statusStyles } from "@/lib/client-helpers";
+import { formatDateLabel, formatPhone, hasOpenOs, statusStyles } from "@/lib/client-helpers";
+import { buildDashboardInsights, type DashboardPeriod } from "@/lib/services/dashboard-service";
 import { cn } from "@/lib/utils";
+
+const PERIOD_STORAGE_KEY = "recorrenciaos-dashboard-period-v43";
+
+const periodOptions: Array<{ label: string; value: DashboardPeriod }> = [
+  { label: "7 dias", value: 7 },
+  { label: "15 dias", value: 15 },
+  { label: "30 dias", value: 30 },
+];
 
 type DashboardCard = {
   key: string;
@@ -27,6 +39,7 @@ type DashboardCard = {
   href: string;
   icon: typeof PhoneCall;
   emphasis?: "default" | "warning" | "success";
+  trend?: { delta: number; percentage: number; direction: "up" | "down" | "neutral" };
 };
 
 function DashboardSkeleton() {
@@ -55,26 +68,82 @@ function DashboardSkeleton() {
   );
 }
 
-function daysBetweenNow(value: string) {
-  return Math.floor((Date.now() - new Date(value).getTime()) / 86400000);
+function TrendPill({ delta, percentage, direction }: { delta: number; percentage: number; direction: "up" | "down" | "neutral" }) {
+  const Icon = direction === "up" ? TrendingUp : direction === "down" ? TrendingDown : Gauge;
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold",
+        direction === "up" && "bg-emerald-50 text-emerald-700",
+        direction === "down" && "bg-rose-50 text-rose-700",
+        direction === "neutral" && "bg-slate-100 text-slate-600",
+      )}
+    >
+      <Icon className="size-3.5" />
+      {delta === 0 ? "Estável" : `${delta > 0 ? "+" : ""}${delta} · ${percentage > 0 ? "+" : ""}${percentage}%`}
+    </span>
+  );
+}
+
+function StatusBar({ label, value, total }: { label: string; value: number; total: number }) {
+  const percentage = total ? Math.round((value / total) * 100) : 0;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <span className="text-slate-600">{label}</span>
+        <span className="font-medium text-slate-900">
+          {value} · {percentage}%
+        </span>
+      </div>
+      <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full rounded-full bg-slate-900 transition-all" style={{ width: `${percentage}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function ProductivityBar({ label, value, total }: { label: string; value: number; total: number }) {
+  const width = total ? Math.max(Math.round((value / total) * 100), value > 0 ? 8 : 0) : 0;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <span className="truncate text-slate-600">{label}</span>
+        <span className="font-medium text-slate-900">{value}</span>
+      </div>
+      <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full rounded-full bg-slate-900 transition-all" style={{ width: `${width}%` }} />
+      </div>
+    </div>
+  );
 }
 
 export function DashboardOverview() {
-  const { clients, stats, topRecurring, staleClients, loading } = useClients();
+  const { clients, stats, loading } = useClients();
+  const [period, setPeriod] = useState<DashboardPeriod>(7);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(PERIOD_STORAGE_KEY);
+      if (!saved) return;
+      const parsed = Number(saved);
+      if (parsed === 7 || parsed === 15 || parsed === 30) {
+        setPeriod(parsed as DashboardPeriod);
+      }
+    } catch {
+      // Ignora valores inválidos no navegador.
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(PERIOD_STORAGE_KEY, String(period));
+  }, [period]);
+
+  const insights = useMemo(() => buildDashboardInsights(clients, stats, period), [clients, period, stats]);
 
   if (loading) return <DashboardSkeleton />;
-
-  const criticalClients = clients.filter(isCriticalClient).slice(0, 4);
-  const recentClients = [...clients]
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 5);
-
-  const now = Date.now();
-  const sevenDaysAgo = now - 7 * 86400000;
-  const updatesToday = clients.filter((client) => daysBetweenNow(client.updatedAt) === 0).length;
-  const solvedIn7Days = clients.filter((client) => client.resolved && new Date(client.updatedAt).getTime() >= sevenDaysAgo).length;
-  const overdueActions = clients.filter((client) => client.nextActionAt && new Date(client.nextActionAt).getTime() < now).length;
-  const unassignedClients = clients.filter((client) => !client.responsibleUserId).length;
 
   const cards: DashboardCard[] = [
     { key: "total", label: "Total", value: stats.total, helper: "Carteira completa", href: "/clientes", icon: PhoneCall },
@@ -82,7 +151,7 @@ export function DashboardOverview() {
       key: "waiting",
       label: "Aguardando contato",
       value: stats.waiting,
-      helper: "Prioridade de retorno",
+      helper: `${insights.overdue} com ação vencida`,
       href: "/clientes?view=waiting",
       icon: Clock3,
       emphasis: "warning",
@@ -91,7 +160,7 @@ export function DashboardOverview() {
       key: "os",
       label: "O.S. abertas",
       value: stats.os,
-      helper: "Casos em andamento",
+      helper: `${insights.workloadOpen} casos ainda pendentes`,
       href: "/clientes?view=os",
       icon: FileText,
     },
@@ -99,16 +168,17 @@ export function DashboardOverview() {
       key: "solved",
       label: "Resolvidos",
       value: stats.solved,
-      helper: `${solvedIn7Days} nos últimos 7 dias`,
+      helper: `${insights.solved.current} no período`,
       href: "/clientes?view=resolved",
       icon: CheckCircle2,
       emphasis: "success",
+      trend: insights.solved,
     },
     {
       key: "noReturn",
       label: "Sem retorno",
       value: stats.noReturn,
-      helper: "Dependem de nova tentativa",
+      helper: "Dependem de nova estratégia",
       href: "/clientes?view=no-return",
       icon: AlertTriangle,
       emphasis: "warning",
@@ -117,53 +187,63 @@ export function DashboardOverview() {
       key: "critical",
       label: "Críticos",
       value: stats.critical,
-      helper: "Recorrência alta ou agenda vencida",
+      helper: `${insights.criticalNow} pressionando a operação`,
       href: "/clientes?view=critical",
       icon: Sparkles,
       emphasis: "warning",
     },
     {
-      key: "stale",
-      label: "Sem atualização",
-      value: stats.stale,
-      helper: "3 dias ou mais sem movimento",
-      href: "/clientes?view=stale",
-      icon: CircleDashed,
+      key: "updated",
+      label: "Atualizados",
+      value: insights.updated.current,
+      helper: `últimos ${period} dias`,
+      href: "/clientes",
+      icon: TrendingUp,
+      trend: insights.updated,
     },
     {
       key: "unassigned",
       label: "Sem responsável",
-      value: unassignedClients,
-      helper: `${overdueActions} com próxima ação vencida`,
+      value: insights.unassigned,
+      helper: `${insights.dueSoon} com ação nas próximas 48h`,
       href: "/clientes?view=unassigned",
       icon: Users,
     },
   ];
 
-  const statusBreakdown = [
-    { label: "Aguardando contato", value: stats.waiting, total: stats.total },
-    { label: "O.S. aberta", value: stats.os, total: stats.total },
-    { label: "Resolvido", value: stats.solved, total: stats.total },
-    { label: "Sem retorno", value: stats.noReturn, total: stats.total },
-  ];
-
-  const workloadByAssignee = clients.reduce<Record<string, { name: string; total: number; critical: number }>>((acc, client) => {
-    const key = client.responsibleUserId ?? "unassigned";
-    const name = client.assignee || "Sem responsável";
-    if (!acc[key]) {
-      acc[key] = { name, total: 0, critical: 0 };
-    }
-    acc[key].total += 1;
-    if (isCriticalClient(client)) acc[key].critical += 1;
-    return acc;
-  }, {});
-
-  const workload = Object.values(workloadByAssignee)
-    .sort((a, b) => b.total - a.total || b.critical - a.critical)
-    .slice(0, 5);
+  const maxTouched = insights.productivity.reduce((acc, item) => Math.max(acc, item.touched), 0);
 
   return (
     <div className="space-y-4 sm:space-y-5">
+      <section className="surface-card section-shell space-y-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <Badge variant="secondary" className="w-fit bg-slate-100 text-slate-700">
+              Gestão operacional
+            </Badge>
+            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Dashboard gerencial</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 sm:text-base">
+              Compare períodos, acompanhe gargalos da carteira e veja quem mais está absorvendo volume crítico sem sair da operação.
+            </p>
+          </div>
+          <div className="inline-flex flex-wrap rounded-2xl border border-slate-200 bg-white p-1">
+            {periodOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setPeriod(option.value)}
+                className={cn(
+                  "rounded-xl px-4 py-2 text-sm font-medium transition",
+                  option.value === period ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-slate-50",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {cards.map((card, index) => {
           const Icon = card.icon;
@@ -181,7 +261,10 @@ export function DashboardOverview() {
                   <div className="min-w-0">
                     <p className="text-xs leading-5 text-slate-500 sm:text-sm">{card.label}</p>
                     <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">{card.value}</p>
-                    <p className="mt-1 text-xs text-slate-400">{card.helper}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <p className="text-xs text-slate-400">{card.helper}</p>
+                      {card.trend ? <TrendPill {...card.trend} /> : null}
+                    </div>
                   </div>
                   <div
                     className={cn(
@@ -204,25 +287,25 @@ export function DashboardOverview() {
           <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
             <CardTitle>Pulso da operação</CardTitle>
             <CardDescription>
-              Visão rápida do que mudou recentemente e de onde a carteira está concentrada neste momento.
+              Resumo do período selecionado com foco em ritmo de atualização, taxa de fechamento e saúde do SLA.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Atualizações hoje</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-950">{updatesToday}</p>
-                <p className="mt-1 text-sm text-slate-500">Clientes com qualquer movimentação no dia.</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Atualizados</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">{insights.updated.current}</p>
+                <p className="mt-1 text-sm text-slate-500">Movimentados nos últimos {period} dias.</p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Resolvidos em 7 dias</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-950">{solvedIn7Days}</p>
-                <p className="mt-1 text-sm text-slate-500">Usado para acompanhar ritmo de fechamento.</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Fechamento</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">{insights.throughputRate}%</p>
+                <p className="mt-1 text-sm text-slate-500">Proporção entre atualizados e resolvidos.</p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Próximas ações vencidas</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-950">{overdueActions}</p>
-                <p className="mt-1 text-sm text-slate-500">Casos que já passaram do prazo previsto.</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Carga aberta</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">{insights.workloadOpen}</p>
+                <p className="mt-1 text-sm text-slate-500">Clientes ainda pendentes na carteira.</p>
               </div>
             </div>
 
@@ -232,20 +315,9 @@ export function DashboardOverview() {
                 <p className="font-medium text-slate-950">Distribuição por status</p>
               </div>
               <div className="space-y-3">
-                {statusBreakdown.map((item) => {
-                  const percentage = item.total ? Math.round((item.value / item.total) * 100) : 0;
-                  return (
-                    <div key={item.label} className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-3 text-sm">
-                        <span className="text-slate-600">{item.label}</span>
-                        <span className="font-medium text-slate-900">{item.value} · {percentage}%</span>
-                      </div>
-                      <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
-                        <div className="h-full rounded-full bg-slate-900 transition-all" style={{ width: `${percentage}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
+                {insights.statusBreakdown.map((item) => (
+                  <StatusBar key={item.label} {...item} />
+                ))}
               </div>
             </div>
           </CardContent>
@@ -253,117 +325,153 @@ export function DashboardOverview() {
 
         <Card>
           <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
-            <CardTitle>Carga por responsável</CardTitle>
-            <CardDescription>Quem está com mais casos atribuídos agora e quantos deles estão críticos.</CardDescription>
+            <CardTitle>SLA e gargalos</CardTitle>
+            <CardDescription>O que merece prioridade agora e onde a operação tende a travar primeiro.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 p-4 pt-0 sm:p-6 sm:pt-0">
-            {workload.length === 0 ? (
-              <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50/80 px-5 py-10 text-center">
-                <p className="font-medium text-slate-900">Ainda não há responsáveis distribuídos.</p>
-                <p className="mt-1 text-sm text-slate-500">Ao atribuir clientes a usuários reais, o ranking aparece aqui.</p>
+          <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
+            <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+              {insights.sla.map((item) => (
+                <div
+                  key={item.label}
+                  className={cn(
+                    "rounded-2xl border p-4",
+                    item.tone === "danger" && "border-rose-200 bg-rose-50 text-rose-900",
+                    item.tone === "warning" && "border-amber-200 bg-amber-50 text-amber-900",
+                    item.tone === "success" && "border-emerald-200 bg-emerald-50 text-emerald-900",
+                  )}
+                >
+                  <p className="text-xs uppercase tracking-[0.18em] opacity-75">{item.label}</p>
+                  <p className="mt-2 text-2xl font-semibold">{item.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-3 rounded-[24px] border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-medium text-slate-950">Gargalos atuais</p>
+                <Badge variant="outline">Top 3</Badge>
+              </div>
+              <div className="space-y-3">
+                {insights.bottlenecks.map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-medium text-slate-950">{item.label}</p>
+                      <span className="text-sm font-semibold text-slate-950">{item.value}</span>
+                    </div>
+                    <p className="mt-1 text-sm text-slate-500">{item.helper}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
+            <CardTitle>Produtividade por responsável</CardTitle>
+            <CardDescription>Ranking baseado em clientes tocados no período, resolvidos e carga crítica atual.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
+            {insights.productivity.length === 0 ? (
+              <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+                Ainda não há movimentações suficientes no período para montar o ranking.
               </div>
             ) : (
-              workload.map((entry, index) => (
-                <div key={`${entry.name}-${index}`} className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-slate-950">{entry.name}</p>
-                      <p className="mt-1 text-sm text-slate-500">{entry.total} caso(s) atribuídos</p>
+              insights.productivity.map((item) => (
+                <div key={item.name} className="rounded-[24px] border border-slate-200 bg-white p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-slate-950">{item.name}</p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {item.solved} resolvidos · {item.critical} críticos em carteira
+                      </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-semibold text-slate-950">{entry.total}</p>
-                      <p className="text-xs text-slate-400">{entry.critical} crítico(s)</p>
-                    </div>
+                    <Badge variant="outline">{item.touched} tocados</Badge>
                   </div>
-                  <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white">
-                    <div className="h-full rounded-full bg-slate-900" style={{ width: `${Math.min(100, Math.max(12, entry.total * 12))}%` }} />
+                  <div className="mt-4">
+                    <ProductivityBar label="Clientes movimentados" value={item.touched} total={maxTouched} />
                   </div>
                 </div>
               ))
             )}
           </CardContent>
         </Card>
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
-            <CardTitle>Clientes mais recorrentes</CardTitle>
-            <CardDescription>Casos com maior volume de atendimentos e maior potencial de desgaste para a operação.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 p-4 pt-0 sm:p-6 sm:pt-0">
-            {topRecurring.map((client) => (
-              <div key={client.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-slate-950">{client.name}</p>
-                    <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">
-                      {client.totalServices}x
-                    </Badge>
-                    <Badge className={cn(statusStyles[client.status], "border text-[12px]")}>{client.status}</Badge>
-                  </div>
-                  {client.description ? <p className="text-sm leading-6 text-slate-500">{client.description}</p> : null}
-                  <div className="grid gap-2 rounded-2xl bg-white p-3 text-sm text-slate-500 sm:grid-cols-2">
-                    <p className="truncate">{formatPhone(client.phone)}</p>
-                    <p className="truncate sm:text-right">{client.assignee}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
 
         <Card>
           <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
-            <CardTitle>Alertas operacionais</CardTitle>
-            <CardDescription>O que precisa de atenção primeiro.</CardDescription>
+            <CardTitle>Recorrência e pressão operacional</CardTitle>
+            <CardDescription>Clientes que mais voltam ou que continuam puxando o volume crítico da operação.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 p-4 pt-0 sm:p-6 sm:pt-0">
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <p className="font-medium text-amber-950">{staleClients.length} clientes sem atualização há 3 dias ou mais</p>
-              <p className="mt-1 text-sm text-amber-900/80">Priorize esses casos na fila operacional ou ajuste a próxima ação.</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="size-4 text-slate-500" />
-                <p className="font-medium text-slate-900">{criticalClients.length} casos críticos no momento</p>
+          <CardContent className="grid gap-4 p-4 pt-0 sm:p-6 sm:pt-0">
+            <div className="space-y-3 rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-medium text-slate-950">Top recorrência</p>
+                <Badge variant="outline">{insights.recurring.length}</Badge>
               </div>
-              <p className="mt-1 text-sm text-slate-500">Críticos combinam recorrência alta, pendência aberta ou próxima ação vencida.</p>
-            </div>
-            <div className="space-y-3">
-              {staleClients.slice(0, 4).map((client) => (
-                <div key={client.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-slate-950">{client.name}</p>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {client.assignee} · {client.status}
-                      </p>
-                    </div>
-                    <p className="shrink-0 text-xs font-medium text-rose-500">{formatDateLabel(client.updatedAt)}</p>
+              {insights.recurring.map((client) => (
+                <Link key={client.id} href="/clientes?sort=services" className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm hover:bg-slate-50">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-slate-950">{client.name}</p>
+                    <p className="mt-1 truncate text-slate-500">{formatPhone(client.phone)}</p>
                   </div>
-                </div>
+                  <span className="shrink-0 font-semibold text-slate-950">{client.totalServices}x</span>
+                </Link>
               ))}
             </div>
+
+            <div className="space-y-3 rounded-[24px] border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-medium text-slate-950">Clientes críticos agora</p>
+                <Link href="/clientes?view=critical" className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:text-slate-950">
+                  Ver todos
+                  <ArrowRight className="size-4" />
+                </Link>
+              </div>
+              {insights.criticalClients.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                  Nenhum cliente crítico identificado no momento.
+                </div>
+              ) : (
+                insights.criticalClients.map((client) => (
+                  <div key={client.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-slate-950">{client.name}</p>
+                        <p className="mt-1 text-sm text-slate-500">{client.assignee}</p>
+                      </div>
+                      <Badge className="bg-amber-100 text-amber-900">{client.totalServices}x</Badge>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Badge className={cn("border", statusStyles[client.status])}>{client.status}</Badge>
+                      {hasOpenOs(client) ? <Badge variant="outline">O.S. ativa</Badge> : null}
+                      {client.nextActionAt ? <Badge variant="outline">{formatDateLabel(client.nextActionAt)}</Badge> : null}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </CardContent>
         </Card>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
+      <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
         <Card>
           <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
-            <CardTitle>Últimas movimentações</CardTitle>
-            <CardDescription>Clientes atualizados recentemente.</CardDescription>
+            <CardTitle>Clientes movimentados mais recentemente</CardTitle>
+            <CardDescription>Útil para revisão rápida do que acabou de acontecer na carteira.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 p-4 pt-0 sm:p-6 sm:pt-0">
-            {recentClients.map((client) => (
-              <div key={client.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-medium text-slate-950">{client.name}</p>
-                  <Badge className={cn(statusStyles[client.status], "border text-[12px]")}>{client.status}</Badge>
+            {insights.recentClients.map((client) => (
+              <div key={client.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-slate-950">{client.name}</p>
+                    <p className="mt-1 text-sm text-slate-500">{client.assignee}</p>
+                  </div>
+                  <Badge variant="outline">{formatDateLabel(client.updatedAt)}</Badge>
                 </div>
-                {client.description ? <p className="mt-1 text-sm leading-6 text-slate-500">{client.description}</p> : null}
-                <p className="mt-1 text-xs text-slate-400">Atualizado {formatDateLabel(client.updatedAt)} · {client.assignee}</p>
               </div>
             ))}
           </CardContent>
@@ -371,22 +479,26 @@ export function DashboardOverview() {
 
         <Card>
           <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
-            <CardTitle>Casos críticos</CardTitle>
-            <CardDescription>Clientes que pedem atenção extra da equipe.</CardDescription>
+            <CardTitle>Ações sugeridas</CardTitle>
+            <CardDescription>Atalhos para limpar o que mais pesa agora sem navegar manualmente pelo sistema.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 p-4 pt-0 sm:p-6 sm:pt-0">
-            {criticalClients.map((client) => (
-              <div key={client.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-950">{client.name}</p>
-                    {client.description ? <p className="mt-1 text-sm leading-6 text-slate-500">{client.description}</p> : null}
-                  </div>
-                  <Badge className="shrink-0 bg-amber-100 text-amber-900">Crítico</Badge>
-                </div>
-                {client.nextActionAt ? <p className="mt-2 text-xs text-slate-400">Próxima ação {formatDateLabel(client.nextActionAt)}</p> : null}
-              </div>
-            ))}
+          <CardContent className="grid gap-3 p-4 pt-0 sm:p-6 sm:pt-0 md:grid-cols-2">
+            <Link href="/clientes?view=critical" className="hover-lift rounded-[24px] border border-slate-200 bg-white p-4">
+              <p className="font-medium text-slate-950">Atacar críticos</p>
+              <p className="mt-1 text-sm text-slate-500">Abrir a carteira já filtrada pelos casos com maior pressão.</p>
+            </Link>
+            <Link href="/clientes?view=unassigned" className="hover-lift rounded-[24px] border border-slate-200 bg-white p-4">
+              <p className="font-medium text-slate-950">Distribuir sem responsável</p>
+              <p className="mt-1 text-sm text-slate-500">Tirar clientes órfãos da fila antes de vencerem.</p>
+            </Link>
+            <Link href="/fila" className="hover-lift rounded-[24px] border border-slate-200 bg-white p-4">
+              <p className="font-medium text-slate-950">Abrir fila operacional</p>
+              <p className="mt-1 text-sm text-slate-500">Ver status por coluna e agir por estágio.</p>
+            </Link>
+            <Link href="/clientes?view=waiting" className="hover-lift rounded-[24px] border border-slate-200 bg-white p-4">
+              <p className="font-medium text-slate-950">Priorizar retornos</p>
+              <p className="mt-1 text-sm text-slate-500">Entrar direto nos casos aguardando contato.</p>
+            </Link>
           </CardContent>
         </Card>
       </section>

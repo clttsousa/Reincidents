@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { ArrowRight, Loader2, LockKeyhole, Mail } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Loader2, LockKeyhole, Mail } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ export function LoginForm() {
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
   const [values, setValues] = useState({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -88,10 +89,21 @@ export function LoginForm() {
         </div>
       </div>
       <div className="space-y-2">
-        <label className="text-sm font-medium text-slate-800">Senha</label>
+        <div className="flex items-center justify-between gap-3">
+          <label className="text-sm font-medium text-slate-800">Senha</label>
+          <span className="text-xs text-slate-400">Mínimo de 8 caracteres</span>
+        </div>
         <div className="relative">
           <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <Input autoComplete="current-password" type="password" placeholder="••••••••" className="pl-11" value={values.password} onChange={(event) => setValues((current) => ({ ...current, password: event.target.value }))} />
+          <Input autoComplete="current-password" type={showPassword ? "text" : "password"} placeholder="••••••••" className="pl-11 pr-11" value={values.password} onChange={(event) => setValues((current) => ({ ...current, password: event.target.value }))} />
+          <button
+            type="button"
+            className="absolute right-3 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+            onClick={() => setShowPassword((current) => !current)}
+            aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+          >
+            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
         </div>
       </div>
 
@@ -103,12 +115,15 @@ export function LoginForm() {
         {loading ? "Entrando..." : "Entrar"}
       </Button>
 
-      <p className="text-center text-sm text-slate-500">
-        Ainda não tem acesso?{" "}
-        <Link className="font-medium text-slate-900 underline underline-offset-4" href="/register">
-          Criar conta
-        </Link>
-      </p>
+      <div className="space-y-2 text-center text-sm text-slate-500">
+        <p>Esqueceu a senha? Ative a recuperação no Supabase Auth ou peça redefinição a um admin.</p>
+        <p>
+          Ainda não tem acesso?{" "}
+          <Link className="font-medium text-slate-900 underline underline-offset-4" href="/register">
+            Criar conta
+          </Link>
+        </p>
+      </div>
     </form>
   );
 }

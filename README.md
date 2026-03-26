@@ -1,38 +1,42 @@
-# RecorrênciaOS v3.7 — gestão administrativa + dashboard inteligente
+# RecorrênciaOS v4.3 — performance por rota + dashboard gerencial + refinamento premium
 
-Painel interno para gestão de clientes recorrentes com problemas de conexão, contatos, ordens de serviço, timeline por cliente, gestão administrativa de usuários e agora também com **auditoria administrativa** e **dashboard com métricas acionáveis**.
+Painel interno para gestão de clientes recorrentes com problemas de conexão, contatos, ordens de serviço, timeline por cliente, gestão administrativa de usuários e dashboard operacional. Esta entrega consolida as evoluções das versões **v4.1, v4.2 e v4.3** sobre a base estabilizada v4.0.
 
-## Stack
+## O que esta versão entrega
 
-- Next.js (App Router)
-- TypeScript
-- Tailwind CSS
-- componentes estilo shadcn/ui
-- Supabase Auth
-- Supabase Database com RLS
-- `@supabase/ssr` para sessão via cookies
+### v4.1 — arquitetura e performance
 
-## O que a versão 3.6 + 3.7 entrega
+- `ClientsProvider` desacoplado do layout global e carregado apenas em:
+  - `/dashboard`
+  - `/clientes`
+  - `/fila`
+- criação de camada de serviços para dados de clientes e timeline
+- novo hook de busca com debounce para reduzir reprocessamento na carteira
+- versões de dependências fixadas por faixa estável em `package.json`
+- novo script `npm run typecheck`
 
-### v3.6 — gestão de usuários mais madura
+### v4.2 — visão gerencial
 
-- filtros por cargo e status na área de usuários
-- trilha de auditoria administrativa em `admin_audit_log`
-- histórico recente de promoções, reativações e desativações
-- toasts de sucesso/erro na área administrativa
-- painel de configuração mais útil para admins
+- dashboard com seletor de período: **7, 15 e 30 dias**
+- comparação com período anterior em indicadores-chave
+- bloco de **SLA e gargalos**
+- ranking de **produtividade por responsável**
+- painel de **recorrência e pressão operacional**
+- atalhos gerenciais para abrir a carteira já filtrada
+- exportação CSV da carteira filtrada
+- presets rápidos na tela de clientes
 
-### v3.7 — dashboard mais inteligente
+### v4.3 — refinamento premium
 
-- cards clicáveis com filtros prontos para `/clientes`
-- métricas operacionais extras:
-  - atualizações hoje
-  - resolvidos em 7 dias
-  - próximas ações vencidas
-  - sem responsável
-- distribuição por status com barras visuais
-- ranking de carga por responsável
-- filtros da página de clientes pré-carregados por query string (`view=...`)
+- overlays com melhor comportamento de foco, `Escape` e travamento de scroll
+- melhorias de acessibilidade nos toasts com `aria-live`
+- login com mostrar/ocultar senha e orientação mais clara
+- cadastro com indicador visual de força da senha
+- carteira com:
+  - atalho `/` para buscar
+  - atalho `N` para novo cliente
+  - alternância entre densidade confortável e compacta
+- responsividade refinada em navegação mobile e telas operacionais
 
 ## Como rodar localmente
 
@@ -56,127 +60,99 @@ Painel interno para gestão de clientes recorrentes com problemas de conexão, c
 
 3. Preencha `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e `NEXT_PUBLIC_APP_URL`.
 
-4. No projeto Supabase, abra o **SQL Editor** e execute o arquivo `database/schema.sql`.
+4. No projeto Supabase, abra o **SQL Editor** e execute:
 
-   Se você já tinha uma versão anterior rodando, execute em sequência:
+   - para base nova: `database/schema.sql`
+   - para base existente: rode os updates em sequência
 
    ```txt
    database/update-v3.3-admin-users.sql
    database/update-v3.5-operacional.sql
    database/update-v3.7-admin-dashboard.sql
+   database/update-v4.0-hardening.sql
    ```
 
-5. Rode o projeto:
+   As versões v4.1, v4.2 e v4.3 **não exigem novo SQL obrigatório**.
+
+5. Rode as validações locais recomendadas:
+
+   ```bash
+   npm run lint
+   npm run typecheck
+   npm run build
+   ```
+
+6. Rode o projeto:
 
    ```bash
    npm run dev
    ```
 
-6. Acesse `http://localhost:3000`.
+7. Acesse `http://localhost:3000`.
 
-## Como atualizar um projeto que já estava funcionando
+## Checklist de homologação
 
-1. Baixe a nova versão e substitua os arquivos do projeto antigo.
-2. Rode:
+### Auth
+- `/login`
+- `/register`
+- mostrar/ocultar senha
+- mensagens de bloqueio e confirmação de conta
 
-   ```bash
-   npm install
-   ```
+### Dashboard
+- troca de período 7 / 15 / 30 dias
+- cards principais
+- SLA e gargalos
+- produtividade por responsável
+- atalhos gerenciais
 
-3. No Supabase, abra o **SQL Editor** e execute nesta ordem:
+### Clientes
+- busca com `/`
+- atalho `N`
+- exportação CSV
+- presets rápidos
+- troca entre modo confortável e compacto
+- novo cliente
+- edição
+- troca de status com confirmação
+- timeline
 
-   ```txt
-   database/update-v3.3-admin-users.sql
-   database/update-v3.5-operacional.sql
-   database/update-v3.7-admin-dashboard.sql
-   ```
+### Fila
+- busca
+- filtro por responsável
+- ordenação
+- abrir carteira a partir das colunas
 
-4. Reinicie o projeto local com `npm run dev`.
-5. Teste com uma conta `ADMIN`:
-   - `/configuracoes`
-   - `/dashboard`
-   - `/clientes`
-   - mudança de cargo
-   - ativar/desativar usuário
-   - cards do dashboard abrindo filtros prontos
+### Configurações
+- mudança de cargo
+- ativar/desativar usuário
+- motivo de desativação
+- último acesso
 
-## Deploy / atualização na Vercel
+## Passo a passo para subir na Vercel
 
-1. Substitua os arquivos do projeto com esta versão.
-2. Rode os SQLs de update no Supabase.
-3. Se já usa GitHub + Vercel:
+1. Garanta que o Supabase já recebeu os SQLs até a v4.0.
+2. Suba o projeto para um repositório Git.
+3. No terminal:
 
    ```bash
    git add .
-   git commit -m "feat: v3.7 admin audit + smart dashboard"
+   git commit -m "feat: recorrenciaos v4.3"
    git push
    ```
 
-4. A Vercel faz deploy automático se o repositório já estiver conectado.
-5. Confira as variáveis em **Project Settings > Environment Variables**:
+4. Conecte o repositório na Vercel, ou apenas faça push se ela já estiver integrada.
+5. Em **Project Settings > Environment Variables**, configure:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
    - `NEXT_PUBLIC_APP_URL`
-6. Se você mudar qualquer variável de ambiente, faça um **redeploy**.
-7. No Supabase, ajuste em **Authentication > URL Configuration**:
+6. Em **Authentication > URL Configuration** no Supabase, ajuste:
    - **Site URL** = URL final da Vercel
    - **Redirect URLs** = `http://localhost:3000/**` e `https://SEU-PROJETO.vercel.app/**`
-
-## Estrutura principal
-
-```txt
-src/
-  app/
-    (auth)/
-      login/
-      register/
-    (app)/
-      dashboard/
-      clientes/
-      fila/
-      configuracoes/
-  components/
-    auth/
-    brand/
-    clientes/
-    configuracoes/
-    dashboard/
-    layout/
-    providers/
-    ui/
-  lib/
-    auth/
-    supabase/
-    client-helpers.ts
-    mock-data.ts
-    navigation.ts
-    utils.ts
-  types/
-public/
-  logo-recorrenciaos.svg
-database/
-  schema.sql
-  update-v3.3-admin-users.sql
-  update-v3.5-operacional.sql
-  update-v3.7-admin-dashboard.sql
-```
-
-## Banco de dados
-
-O arquivo `database/schema.sql` cria:
-
-- `profiles`
-- `clients`
-- `client_history`
-- `client_notes`
-- `admin_audit_log`
-- trigger automático para criar perfil após cadastro no Auth
-- políticas RLS iniciais
-- índices para status, atualização, responsável, último contato e próxima ação
+7. Faça o deploy.
 
 ## Observações importantes
 
-- Para um fluxo mais simples em desenvolvimento, você pode desativar a confirmação de e-mail no Supabase Auth.
-- A página de configurações exige perfil `ADMIN`.
-- A timeline do cliente depende de executar o SQL da v3.5 se você já vier de uma base anterior.
-- A auditoria administrativa depende de executar o SQL da v3.7 em bases já existentes.
+- A página de configurações continua exigindo perfil `ADMIN`.
+- O endurecimento administrativo continua dependendo do `update-v4.0-hardening.sql` já aplicado no banco.
+- Como esta versão moveu a carga de clientes para páginas específicas, a área de configurações fica mais leve por não carregar a carteira inteira em segundo plano.
+- Rode sempre `npm run lint`, `npm run typecheck` e `npm run build` no seu ambiente antes do deploy final.

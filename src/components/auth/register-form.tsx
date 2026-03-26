@@ -2,22 +2,40 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
-import { ArrowRight, Loader2, LockKeyhole, Mail, User } from "lucide-react";
+import { useMemo, useState, type FormEvent } from "react";
+import { ArrowRight, Eye, EyeOff, Loader2, LockKeyhole, Mail, User } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function getPasswordStrength(password: string) {
+  let score = 0;
+  if (password.length >= 8) score += 1;
+  if (/[A-Z]/.test(password)) score += 1;
+  if (/[a-z]/.test(password)) score += 1;
+  if (/\d/.test(password)) score += 1;
+  if (/[^A-Za-z0-9]/.test(password)) score += 1;
+
+  if (score <= 2) return { label: "Baixa", width: 33, className: "bg-rose-500" };
+  if (score <= 4) return { label: "Média", width: 66, className: "bg-amber-500" };
+  return { label: "Alta", width: 100, className: "bg-emerald-500" };
+}
+
 export function RegisterForm() {
   const router = useRouter();
   const [values, setValues] = useState({ name: "", email: "", password: "", confirmPassword: "" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const passwordStrength = useMemo(() => getPasswordStrength(values.password), [values.password]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -97,19 +115,49 @@ export function RegisterForm() {
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-800">Senha</label>
+          <div className="flex items-center justify-between gap-3">
+            <label className="text-sm font-medium text-slate-800">Senha</label>
+            <span className="text-xs text-slate-400">Mín. 8 caracteres</span>
+          </div>
           <div className="relative">
             <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <Input autoComplete="new-password" type="password" placeholder="Mínimo de 8 caracteres" className="pl-11" value={values.password} onChange={(event) => setValues((current) => ({ ...current, password: event.target.value }))} />
+            <Input autoComplete="new-password" type={showPassword ? "text" : "password"} placeholder="Mínimo de 8 caracteres" className="pl-11 pr-11" value={values.password} onChange={(event) => setValues((current) => ({ ...current, password: event.target.value }))} />
+            <button
+              type="button"
+              className="absolute right-3 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              onClick={() => setShowPassword((current) => !current)}
+              aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+            >
+              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
           </div>
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-800">Confirmar senha</label>
           <div className="relative">
             <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <Input autoComplete="new-password" type="password" placeholder="Repita a senha" className="pl-11" value={values.confirmPassword} onChange={(event) => setValues((current) => ({ ...current, confirmPassword: event.target.value }))} />
+            <Input autoComplete="new-password" type={showConfirmPassword ? "text" : "password"} placeholder="Repita a senha" className="pl-11 pr-11" value={values.confirmPassword} onChange={(event) => setValues((current) => ({ ...current, confirmPassword: event.target.value }))} />
+            <button
+              type="button"
+              className="absolute right-3 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              onClick={() => setShowConfirmPassword((current) => !current)}
+              aria-label={showConfirmPassword ? "Ocultar confirmação de senha" : "Mostrar confirmação de senha"}
+            >
+              {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
           </div>
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <span className="font-medium text-slate-700">Força da senha</span>
+          <span className="text-slate-500">{values.password ? passwordStrength.label : "Preencha a senha"}</span>
+        </div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
+          <div className={cn("h-full rounded-full transition-all", values.password ? passwordStrength.className : "bg-slate-300")} style={{ width: `${values.password ? passwordStrength.width : 0}%` }} />
+        </div>
+        <p className="mt-2 text-xs text-slate-500">Combine letras maiúsculas, minúsculas, números e símbolos para um acesso mais forte.</p>
       </div>
 
       {error ? <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p> : null}

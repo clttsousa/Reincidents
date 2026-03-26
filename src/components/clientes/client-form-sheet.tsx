@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { clientToFormValues, formatDateLabel, formatPhone, statusOptions, validateClientForm } from "@/lib/client-helpers";
+import { clientToFormValues, formatDateLabel, formatPhone, formatPhoneInput, statusOptions, validateClientForm } from "@/lib/client-helpers";
+import { useOverlayBehavior } from "@/hooks/use-overlay-behavior";
 import type { AssigneeOption, ClientFormValues, ClientRecord } from "@/types/mock";
 
 interface ClientFormSheetProps {
@@ -20,11 +21,16 @@ interface ClientFormSheetProps {
   onSubmit: (values: ClientFormValues) => Promise<boolean>;
 }
 
-function FieldLabel({ label, required = false }: { label: string; required?: boolean }) {
+function FieldLabel({ label, required = false, helper }: { label: string; required?: boolean; helper?: string }) {
   return (
     <label className="mb-2 block text-sm font-medium text-slate-800">
-      {label}
-      {required ? <span className="ml-1 text-red-500">*</span> : null}
+      <div className="flex items-center gap-2">
+        <span>
+          {label}
+          {required ? <span className="ml-1 text-red-500">*</span> : null}
+        </span>
+      </div>
+      {helper ? <span className="mt-1 block text-xs font-normal text-slate-500">{helper}</span> : null}
     </label>
   );
 }
@@ -37,6 +43,7 @@ function ErrorText({ message }: { message?: string }) {
 export function ClientFormSheet({ open, mode, client, assignees, submitting = false, onClose, onSubmit }: ClientFormSheetProps) {
   const [values, setValues] = useState<ClientFormValues>(clientToFormValues());
   const [errors, setErrors] = useState<Partial<Record<keyof ClientFormValues, string>>>({});
+  const panelRef = useOverlayBehavior({ open, onClose, disableClose: submitting });
 
   useEffect(() => {
     if (!open) return;
@@ -44,16 +51,6 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
     setErrors({});
   }, [client, open]);
 
-  useEffect(() => {
-    if (!open) return;
-
-    const onEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !submitting) onClose();
-    };
-
-    window.addEventListener("keydown", onEscape);
-    return () => window.removeEventListener("keydown", onEscape);
-  }, [onClose, open, submitting]);
 
   const title = mode === "create" ? "Novo cliente recorrente" : "Editar cliente";
   const subtitle =
@@ -71,27 +68,41 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
     setValues((current) => {
       const next = { ...current, [field]: value };
 
+      if (field === "phone") {
+        next.phone = formatPhoneInput(String(value)) as ClientFormValues[K];
+      }
+
       if (field === "status") {
         if (value === "O.S. aberta") {
           next.osOpen = true;
           next.resolved = false;
         }
         if (value === "Resolvido") {
-          next.osOpen = true;
+          next.osOpen = false;
           next.resolved = true;
         }
         if (value === "Aguardando contato" || value === "Sem retorno") {
+          next.osOpen = false;
           next.resolved = false;
         }
       }
 
-      if (field === "resolved" && value === true) {
-        next.status = "Resolvido";
-        next.osOpen = true;
+      if (field === "resolved") {
+        if (value === true) {
+          next.status = "Resolvido";
+          next.osOpen = false;
+        } else if (next.status === "Resolvido") {
+          next.status = next.osOpen ? "O.S. aberta" : "Aguardando contato";
+        }
       }
 
-      if (field === "osOpen" && value === false) {
-        next.osNumber = "";
+      if (field === "osOpen") {
+        if (value === true && next.status !== "Resolvido") {
+          next.status = "O.S. aberta";
+        }
+        if (value === false && next.status === "O.S. aberta") {
+          next.status = "Aguardando contato";
+        }
       }
 
       return next;
@@ -113,9 +124,9 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-end bg-slate-950/35 backdrop-blur-sm md:items-stretch">
+    <div className="fixed inset-0 z-50 flex items-end justify-end bg-slate-950/35 backdrop-blur-sm md:items-stretch" role="dialog" aria-modal="true" aria-label={title}>
       <button aria-label="Fechar formulário" className="h-full flex-1 cursor-default" onClick={submitting ? undefined : onClose} type="button" />
-      <div className="relative h-[94dvh] w-full overflow-y-auto rounded-t-[28px] border border-white/70 bg-white/95 shadow-2xl md:h-full md:max-w-4xl md:rounded-none md:border-y-0 md:border-r-0 md:border-l">
+      <div ref={panelRef} tabIndex={-1} className="relative h-[94dvh] w-full overflow-y-auto rounded-t-[28px] border border-white/70 bg-white/95 shadow-2xl md:h-full md:max-w-4xl md:rounded-none md:border-y-0 md:border-r-0 md:border-l">
         <form className="flex min-h-full flex-col" onSubmit={handleSubmit}>
           <div className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/92 px-4 py-4 backdrop-blur sm:px-5 md:px-7">
             <div className="flex items-start justify-between gap-4">
@@ -126,7 +137,7 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
                   <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
                 </div>
               </div>
-              <Button type="button" variant="outline" size="icon" className="border-white/80 bg-white" onClick={onClose} disabled={submitting}>
+              <Button type="button" variant="outline" size="icon" className="border-white/80 bg-white" onClick={onClose} disabled={submitting} aria-label="Fechar">
                 <X className="size-4" />
               </Button>
             </div>
@@ -168,17 +179,18 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
                   <ErrorText message={errors.name} />
                 </div>
                 <div>
-                  <FieldLabel label="Telefone" required />
+                  <FieldLabel label="Telefone" required helper="Pode ser local com DDD ou com +55." />
                   <Input
                     value={values.phone}
                     onChange={(event) => updateValue("phone", event.target.value)}
-                    placeholder="5534999991234"
+                    placeholder="(34) 99999-1234"
                     className="border-slate-200 bg-white"
+                    inputMode="tel"
                   />
                   <ErrorText message={errors.phone} />
                 </div>
                 <div>
-                  <FieldLabel label="Total de atendimentos" required />
+                  <FieldLabel label="Total de atendimentos" required helper="Usado para identificar reincidência e prioridade." />
                   <Input
                     type="number"
                     min={1}
@@ -189,22 +201,22 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
                   <ErrorText message={errors.totalServices} />
                 </div>
                 <div>
-                  <FieldLabel label="Responsável" required />
+                  <FieldLabel label="Responsável" required helper="Aparece na fila, no dashboard e nos filtros rápidos." />
                   <div className="relative">
                     <select
                       value={values.responsibleUserId}
                       onChange={(event) => updateValue("responsibleUserId", event.target.value)}
-                      className="flex h-11 w-full appearance-none rounded-2xl border border-slate-200 bg-white px-3 text-sm shadow-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring/50"
+                      className="flex h-11 w-full appearance-none rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus-visible:ring-4 focus-visible:ring-ring/50"
                     >
-                      <option value="">Selecione o responsável</option>
-                      {assignees.map((option) => (
-                        <option key={option.id} value={option.id}>
-                          {option.name} · {option.role === "ADMIN" ? "Admin" : option.role === "SUPERVISOR" ? "Supervisor" : "Atendente"}
+                      <option value="">Selecione um responsável</option>
+                      {assignees.map((assignee) => (
+                        <option key={assignee.id} value={assignee.id}>
+                          {assignee.name}
                         </option>
                       ))}
                     </select>
+                    <ErrorText message={errors.responsibleUserId} />
                   </div>
-                  <ErrorText message={errors.responsibleUserId} />
                 </div>
               </div>
             </section>
@@ -212,117 +224,126 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
             <section className="space-y-4">
               <div className="flex items-center gap-2">
                 <AlertCircle className="size-4 text-slate-500" />
-                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Contexto do caso</h3>
+                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Contexto operacional</h3>
               </div>
-
               <div className="grid gap-4 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <FieldLabel label="Descrição do caso" required helper="Resumo objetivo do problema, comportamento do cliente e expectativa da equipe." />
+                  <Textarea
+                    value={values.description}
+                    onChange={(event) => updateValue("description", event.target.value)}
+                    placeholder="Ex.: Cliente relata lentidão constante na TV e nos celulares. Já houve recorrência e possível necessidade de visita técnica."
+                    className="min-h-[112px] border-slate-200 bg-white"
+                  />
+                </div>
                 <div>
-                  <FieldLabel label="Status atual" required />
+                  <FieldLabel label="Status" required helper="Ao marcar como resolvido, a O.S. deixa de contar como aberta." />
                   <select
                     value={values.status}
                     onChange={(event) => updateValue("status", event.target.value as ClientFormValues["status"])}
-                    className="flex h-11 w-full appearance-none rounded-2xl border border-slate-200 bg-white px-3 text-sm shadow-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring/50"
+                    className="flex h-11 w-full appearance-none rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus-visible:ring-4 focus-visible:ring-ring/50"
                   >
-                    {statusOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
+                    {statusOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <FieldLabel label="Número da O.S." />
+                  <FieldLabel label="Número da O.S." helper="Obrigatório quando houver O.S. aberta ou concluída." />
                   <Input
                     value={values.osNumber}
                     onChange={(event) => updateValue("osNumber", event.target.value)}
-                    placeholder="Ex.: OS-2451"
+                    placeholder="Ex.: OS-002526"
                     className="border-slate-200 bg-white"
-                    disabled={!values.osOpen && values.status !== "O.S. aberta" && values.status !== "Resolvido"}
                   />
                   <ErrorText message={errors.osNumber} />
                 </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="flex items-center justify-between rounded-[22px] border border-slate-200 bg-white px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">O.S. aberta</p>
-                    <p className="text-xs text-slate-500">Indique se o caso já foi formalmente escalado.</p>
-                  </div>
-                  <input type="checkbox" checked={values.osOpen} onChange={(event) => updateValue("osOpen", event.target.checked)} className="size-4 rounded border-slate-300" />
-                </label>
-                <label className="flex items-center justify-between rounded-[22px] border border-slate-200 bg-white px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">Resolvido</p>
-                    <p className="text-xs text-slate-500">Marque apenas quando o caso estiver efetivamente concluído.</p>
-                  </div>
-                  <input type="checkbox" checked={values.resolved} onChange={(event) => updateValue("resolved", event.target.checked)} className="size-4 rounded border-slate-300" />
-                </label>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <FieldLabel label="Último contato" />
-                  <Input type="datetime-local" value={values.lastContactAt} onChange={(event) => updateValue("lastContactAt", event.target.value)} />
-                  <ErrorText message={errors.lastContactAt} />
+                  <FieldLabel label="Último contato" helper="Data da última tratativa real com o cliente." />
+                  <Input
+                    type="datetime-local"
+                    value={values.lastContactAt}
+                    onChange={(event) => updateValue("lastContactAt", event.target.value)}
+                    className="border-slate-200 bg-white"
+                  />
                 </div>
                 <div>
-                  <FieldLabel label="Próxima ação" />
-                  <Input type="datetime-local" value={values.nextActionAt} onChange={(event) => updateValue("nextActionAt", event.target.value)} />
+                  <FieldLabel label="Próxima ação" helper="Use para agenda de retorno, visita ou nova tentativa." />
+                  <Input
+                    type="datetime-local"
+                    value={values.nextActionAt}
+                    onChange={(event) => updateValue("nextActionAt", event.target.value)}
+                    className="border-slate-200 bg-white"
+                  />
                   <ErrorText message={errors.nextActionAt} />
                 </div>
               </div>
             </section>
 
-            <section className="space-y-4">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="size-4 text-slate-500" />
-                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Relato e observações</h3>
+            <section className="grid gap-4 rounded-[24px] border border-slate-200/80 bg-slate-50/70 p-4 sm:p-5 lg:grid-cols-[1fr_1fr_1.2fr]">
+              <div className="rounded-2xl border border-white bg-white p-4 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+                    <UserRound className="size-4" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-900">O.S. em andamento</p>
+                    <p className="mt-1 text-sm text-slate-500">Use quando o caso segue aberto na operação.</p>
+                  </div>
+                </div>
+                <label className="mt-4 flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <span className="text-sm font-medium text-slate-700">Manter O.S. aberta</span>
+                  <input type="checkbox" checked={values.osOpen} onChange={(event) => updateValue("osOpen", event.target.checked)} className="size-4 accent-slate-900" disabled={values.resolved} />
+                </label>
               </div>
-              <div className="space-y-4">
-                <div>
-                  <FieldLabel label="Descrição do relato" />
-                  <Textarea
-                    value={values.description}
-                    onChange={(event) => updateValue("description", event.target.value)}
-                    placeholder="Descreva o que o cliente relatou, sintomas, contexto do local e percepção da equipe."
-                  />
+
+              <div className="rounded-2xl border border-white bg-white p-4 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                    <CheckCircle2 className="size-4" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-900">Caso resolvido</p>
+                    <p className="mt-1 text-sm text-slate-500">Fecha o caso e tira a O.S. do total aberto.</p>
+                  </div>
                 </div>
-                <div>
-                  <FieldLabel label="Observações internas" />
-                  <Textarea
-                    value={values.notes}
-                    onChange={(event) => updateValue("notes", event.target.value)}
-                    placeholder="Observações rápidas para a equipe, próximos passos ou detalhes internos."
-                    className="min-h-[112px]"
-                  />
-                  <ErrorText message={errors.notes} />
-                </div>
+                <label className="mt-4 flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <span className="text-sm font-medium text-slate-700">Marcar como resolvido</span>
+                  <input type="checkbox" checked={values.resolved} onChange={(event) => updateValue("resolved", event.target.checked)} className="size-4 accent-emerald-600" />
+                </label>
+              </div>
+
+              <div className="rounded-2xl border border-white bg-white p-4 shadow-sm">
+                <p className="font-medium text-slate-900">Observação interna</p>
+                <p className="mt-1 text-sm text-slate-500">Tudo que a equipe precisa saber sem depender de memória ou conversa paralela.</p>
+                <Textarea
+                  value={values.notes}
+                  onChange={(event) => updateValue("notes", event.target.value)}
+                  placeholder="Ex.: Cliente idoso, prefere contato por ligação após 14h, já reclamou duas vezes da mesma TV box."
+                  className="mt-4 min-h-[132px] border-slate-200 bg-slate-50"
+                />
+                <ErrorText message={errors.notes} />
               </div>
             </section>
 
-            {client ? (
-              <section className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
-                <div className="flex items-center gap-3 text-sm text-slate-600">
-                  <UserRound className="size-4" />
-                  <span>Última atualização registrada {formatDateLabel(client.updatedAt)}.</span>
-                </div>
-              </section>
+            {client?.updatedAt ? (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                Última atualização registrada: <span className="font-medium text-slate-700">{formatDateLabel(client.updatedAt)}</span>
+              </div>
             ) : null}
           </div>
 
-          <div className="sticky bottom-0 border-t border-slate-200 bg-white/92 px-4 py-4 backdrop-blur sm:px-5 md:px-7">
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-slate-500">A timeline do cliente será atualizada automaticamente após salvar.</p>
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={submitting}>
-                  <Save className="size-4" />
-                  {submitting ? "Salvando..." : mode === "create" ? "Cadastrar cliente" : "Salvar alterações"}
-                </Button>
-              </div>
+          <div className="sticky bottom-0 border-t border-slate-200/80 bg-white/92 px-4 py-4 backdrop-blur sm:px-5 md:px-7">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? <Save className="size-4 animate-pulse" /> : <Save className="size-4" />}
+                {submitting ? "Salvando..." : mode === "create" ? "Cadastrar cliente" : "Salvar alterações"}
+              </Button>
             </div>
           </div>
         </form>

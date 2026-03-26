@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   Clock3,
   Copy,
+  Download,
   MessageCircle,
   Pencil,
   PhoneCall,
   Plus,
+  Rows3,
   Search,
   ShieldAlert,
   Sparkles,
@@ -29,6 +31,7 @@ import {
   formatPhone,
   getOsLabel,
   getResolvedLabel,
+  hasOpenOs,
   isCriticalClient,
   isStaleClient,
   sanitizePhone,
@@ -36,7 +39,10 @@ import {
   statusStyles,
 } from "@/lib/client-helpers";
 import { cn } from "@/lib/utils";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import type { ClientRecord, ClientStatus } from "@/types/mock";
+
+const FILTERS_STORAGE_KEY = "recorrenciaos-client-filters-v43";
 
 const quickFilters: Array<{ label: string; value: "Todos" | ClientStatus }> = [
   { label: "Todos", value: "Todos" },
@@ -45,6 +51,20 @@ const quickFilters: Array<{ label: string; value: "Todos" | ClientStatus }> = [
   { label: "Resolvidos", value: "Resolvido" },
   { label: "Sem retorno", value: "Sem retorno" },
 ];
+
+type SortOption = "updated-desc" | "name-asc" | "services-desc" | "next-action-asc" | "critical-first";
+
+type PersistedFilters = {
+  search: string;
+  activeFilter: (typeof quickFilters)[number]["value"];
+  assigneeFilter: string;
+  criticalOnly: boolean;
+  staleOnly: boolean;
+  osFilter: "Todos" | "Com O.S." | "Sem O.S.";
+  resolvedFilter: "Todos" | "Resolvidos" | "Pendentes";
+  sortBy: SortOption;
+  density: "comfortable" | "compact";
+};
 
 function MetricCard({ label, value, helper, className }: { label: string; value: string; helper?: string; className?: string }) {
   return (
@@ -99,21 +119,166 @@ function EmptyState({ onClear, onCreate }: { onClear: () => void; onCreate: () =
   );
 }
 
+function buildDefaultFilters(): PersistedFilters {
+  return {
+    search: "",
+    activeFilter: "Todos",
+    assigneeFilter: "Todos",
+    criticalOnly: false,
+    staleOnly: false,
+    osFilter: "Todos",
+    resolvedFilter: "Todos",
+    sortBy: "updated-desc",
+    density: "comfortable",
+  };
+}
+
+function sortClients(clients: ClientRecord[], sortBy: SortOption) {
+  return [...clients].sort((a, b) => {
+    if (sortBy === "name-asc") {
+      return a.name.localeCompare(b.name, "pt-BR");
+    }
+
+    if (sortBy === "services-desc") {
+      return b.totalServices - a.totalServices || new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    }
+
+    if (sortBy === "next-action-asc") {
+      const aValue = a.nextActionAt ? new Date(a.nextActionAt).getTime() : Number.MAX_SAFE_INTEGER;
+      const bValue = b.nextActionAt ? new Date(b.nextActionAt).getTime() : Number.MAX_SAFE_INTEGER;
+      return aValue - bValue || new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    }
+
+    if (sortBy === "critical-first") {
+      const aCritical = isCriticalClient(a) ? 1 : 0;
+      const bCritical = isCriticalClient(b) ? 1 : 0;
+      return bCritical - aCritical || b.totalServices - a.totalServices || new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    }
+
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
+}
+
+const viewPresets: Array<{
+  label: string;
+  action: (setters: {
+    setActiveFilter: (value: (typeof quickFilters)[number]["value"]) => void;
+    setAssigneeFilter: (value: string) => void;
+    setCriticalOnly: (value: boolean) => void;
+    setStaleOnly: (value: boolean) => void;
+    setOsFilter: (value: PersistedFilters["osFilter"]) => void;
+    setResolvedFilter: (value: PersistedFilters["resolvedFilter"]) => void;
+    setSortBy: (value: SortOption) => void;
+  }) => void;
+}> = [
+  {
+    label: "Críticos",
+    action: ({ setActiveFilter, setAssigneeFilter, setCriticalOnly, setStaleOnly, setOsFilter, setResolvedFilter, setSortBy }) => {
+      setActiveFilter("Todos");
+      setAssigneeFilter("Todos");
+      setCriticalOnly(true);
+      setStaleOnly(false);
+      setOsFilter("Todos");
+      setResolvedFilter("Pendentes");
+      setSortBy("critical-first");
+    },
+  },
+  {
+    label: "Atrasados",
+    action: ({ setActiveFilter, setAssigneeFilter, setCriticalOnly, setStaleOnly, setOsFilter, setResolvedFilter, setSortBy }) => {
+      setActiveFilter("Todos");
+      setAssigneeFilter("Todos");
+      setCriticalOnly(false);
+      setStaleOnly(true);
+      setOsFilter("Todos");
+      setResolvedFilter("Pendentes");
+      setSortBy("updated-desc");
+    },
+  },
+  {
+    label: "Sem responsável",
+    action: ({ setActiveFilter, setAssigneeFilter, setCriticalOnly, setStaleOnly, setOsFilter, setResolvedFilter, setSortBy }) => {
+      setActiveFilter("Todos");
+      setAssigneeFilter("Sem responsável");
+      setCriticalOnly(false);
+      setStaleOnly(false);
+      setOsFilter("Todos");
+      setResolvedFilter("Pendentes");
+      setSortBy("updated-desc");
+    },
+  },
+  {
+    label: "Resolvidos",
+    action: ({ setActiveFilter, setAssigneeFilter, setCriticalOnly, setStaleOnly, setOsFilter, setResolvedFilter, setSortBy }) => {
+      setActiveFilter("Resolvido");
+      setAssigneeFilter("Todos");
+      setCriticalOnly(false);
+      setStaleOnly(false);
+      setOsFilter("Todos");
+      setResolvedFilter("Resolvidos");
+      setSortBy("updated-desc");
+    },
+  },
+];
+
 export function ClientsTable() {
+  const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { clients, stats, staleClients, assignees, loading, formSubmitting, updatingClientId, addClient, updateClient, updateClientStatus } = useClients();
-  const [search, setSearch] = useState("");
+
+  const [searchInput, setSearchInput] = useState("");
   const [activeFilter, setActiveFilter] = useState<(typeof quickFilters)[number]["value"]>("Todos");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("Todos");
   const [criticalOnly, setCriticalOnly] = useState(false);
   const [staleOnly, setStaleOnly] = useState(false);
   const [osFilter, setOsFilter] = useState<"Todos" | "Com O.S." | "Sem O.S.">( "Todos" );
   const [resolvedFilter, setResolvedFilter] = useState<"Todos" | "Resolvidos" | "Pendentes">("Todos");
+  const [sortBy, setSortBy] = useState<SortOption>("updated-desc");
+  const [density, setDensity] = useState<PersistedFilters["density"]>("comfortable");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [sheetMode, setSheetMode] = useState<"create" | "edit">("create");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [copiedClientId, setCopiedClientId] = useState<string | null>(null);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ clientId: string; nextStatus: ClientStatus } | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const search = useDebouncedValue(searchInput, 180);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(FILTERS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<PersistedFilters>;
+      setSearchInput(parsed.search ?? "");
+      setActiveFilter(parsed.activeFilter ?? "Todos");
+      setAssigneeFilter(parsed.assigneeFilter ?? "Todos");
+      setCriticalOnly(Boolean(parsed.criticalOnly));
+      setStaleOnly(Boolean(parsed.staleOnly));
+      setOsFilter(parsed.osFilter ?? "Todos");
+      setResolvedFilter(parsed.resolvedFilter ?? "Todos");
+      setSortBy(parsed.sortBy ?? "updated-desc");
+      setDensity(parsed.density ?? "comfortable");
+    } catch {
+      // Ignora estado inválido salvo no navegador.
+    }
+  }, []);
+
+  useEffect(() => {
+    const payload: PersistedFilters = {
+      search: searchInput,
+      activeFilter,
+      assigneeFilter,
+      criticalOnly,
+      staleOnly,
+      osFilter,
+      resolvedFilter,
+      sortBy,
+      density,
+    };
+
+    window.localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(payload));
+  }, [activeFilter, assigneeFilter, criticalOnly, density, osFilter, resolvedFilter, searchInput, sortBy, staleOnly]);
 
   useEffect(() => {
     const openCreate = () => {
@@ -127,13 +292,50 @@ export function ClientsTable() {
   }, []);
 
   useEffect(() => {
+    if (searchParams.get("create") !== "1") return;
+
+    setSheetMode("create");
+    setSelectedClientId(null);
+    setSheetOpen(true);
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("create");
+    const nextUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.replace(nextUrl, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  useEffect(() => {
     if (!copiedClientId) return;
     const timeout = window.setTimeout(() => setCopiedClientId(null), 1800);
     return () => window.clearTimeout(timeout);
   }, [copiedClientId]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const typing = target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+
+      if (event.key === "/" && !typing) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+
+      if ((event.key === "n" || event.key === "N") && !typing) {
+        event.preventDefault();
+        openCreateSheet();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   useEffect(() => {
     const view = searchParams.get("view");
     const assignee = searchParams.get("assignee");
+
+    if (!view && !assignee) return;
 
     setActiveFilter(
       view === "waiting"
@@ -151,8 +353,8 @@ export function ClientsTable() {
     setAssigneeFilter(view === "unassigned" ? "Sem responsável" : assignee ?? "Todos");
     setOsFilter(view === "os" ? "Com O.S." : "Todos");
     setResolvedFilter(view === "resolved" ? "Resolvidos" : view === "critical" || view === "waiting" || view === "no-return" || view === "unassigned" ? "Pendentes" : "Todos");
+    setSortBy(view === "critical" ? "critical-first" : "updated-desc");
   }, [searchParams]);
-
 
   const activeAssignees = useMemo(() => assignees.filter((assignee) => assignee.isActive), [assignees]);
   const selectedClient = useMemo(() => clients.find((client) => client.id === selectedClientId) ?? null, [clients, selectedClientId]);
@@ -160,12 +362,12 @@ export function ClientsTable() {
   const filteredClients = useMemo(() => {
     const term = search.trim().toLowerCase();
 
-    return clients.filter((client) => {
+    const result = clients.filter((client) => {
       const matchesStatus = activeFilter === "Todos" ? true : client.status === activeFilter;
       const matchesAssignee = assigneeFilter === "Todos" ? true : assigneeFilter === "Sem responsável" ? !client.responsibleUserId : client.responsibleUserId === assigneeFilter;
       const matchesCritical = criticalOnly ? isCriticalClient(client) : true;
       const matchesStale = staleOnly ? isStaleClient(client) : true;
-      const matchesOs = osFilter === "Todos" ? true : osFilter === "Com O.S." ? client.osOpen : !client.osOpen;
+      const matchesOs = osFilter === "Todos" ? true : osFilter === "Com O.S." ? hasOpenOs(client) : !hasOpenOs(client);
       const matchesResolved = resolvedFilter === "Todos" ? true : resolvedFilter === "Resolvidos" ? client.resolved : !client.resolved;
       const matchesSearch =
         term.length === 0 ||
@@ -177,7 +379,9 @@ export function ClientsTable() {
 
       return matchesStatus && matchesAssignee && matchesCritical && matchesStale && matchesOs && matchesResolved && matchesSearch;
     });
-  }, [activeFilter, assigneeFilter, clients, criticalOnly, osFilter, resolvedFilter, search, staleOnly]);
+
+    return sortClients(result, sortBy);
+  }, [activeFilter, assigneeFilter, clients, criticalOnly, osFilter, resolvedFilter, search, sortBy, staleOnly]);
 
   const handleCopyPhone = async (client: ClientRecord) => {
     const text = formatPhone(client.phone);
@@ -220,13 +424,61 @@ export function ClientsTable() {
   };
 
   const clearFilters = () => {
-    setSearch("");
-    setActiveFilter("Todos");
-    setAssigneeFilter("Todos");
-    setCriticalOnly(false);
-    setStaleOnly(false);
-    setOsFilter("Todos");
-    setResolvedFilter("Todos");
+    const defaults = buildDefaultFilters();
+    setSearchInput(defaults.search);
+    setActiveFilter(defaults.activeFilter);
+    setAssigneeFilter(defaults.assigneeFilter);
+    setCriticalOnly(defaults.criticalOnly);
+    setStaleOnly(defaults.staleOnly);
+    setOsFilter(defaults.osFilter);
+    setResolvedFilter(defaults.resolvedFilter);
+    setSortBy(defaults.sortBy);
+    setDensity(defaults.density);
+  };
+
+  const applyPreset = (label: string) => {
+    const preset = viewPresets.find((item) => item.label === label);
+    if (!preset) return;
+
+    preset.action({
+      setActiveFilter,
+      setAssigneeFilter,
+      setCriticalOnly,
+      setStaleOnly,
+      setOsFilter,
+      setResolvedFilter,
+      setSortBy,
+    });
+  };
+
+  const exportCsv = () => {
+    const header = ["Cliente", "Telefone", "Status", "Responsável", "Atendimentos", "Próxima ação", "O.S.", "Resolvido"];
+    const rows = filteredClients.map((client) => [
+      client.name,
+      formatPhone(client.phone),
+      client.status,
+      client.assignee,
+      String(client.totalServices),
+      client.nextActionAt ? formatDateLabel(client.nextActionAt) : "Sem agenda",
+      getOsLabel(client),
+      getResolvedLabel(client),
+    ]);
+
+    const escapeCell = (value: string) => `"${String(value).replaceAll('"', '""')}"`;
+    const csv = [header, ...rows].map((row) => row.map(escapeCell).join(';')).join('\n');
+    const blob = new Blob([`﻿${csv}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `recorrenciaos-clientes-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const confirmStatusChange = async () => {
+    if (!pendingStatusChange) return;
+    await updateClientStatus(pendingStatusChange.clientId, pendingStatusChange.nextStatus);
+    setPendingStatusChange(null);
   };
 
   if (loading) {
@@ -268,8 +520,9 @@ export function ClientsTable() {
               <div className="relative w-full lg:w-[360px] lg:flex-none">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
+                  ref={searchInputRef}
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
                   className="pl-9"
                   placeholder="Buscar por cliente, telefone, responsável ou O.S."
                 />
@@ -278,9 +531,20 @@ export function ClientsTable() {
                 {filteredClients.length} exibidos
               </div>
             </div>
-            <Button onClick={openCreateSheet} className="hidden sm:inline-flex">
-              Novo cliente
-            </Button>
+            <div className="hidden flex-wrap items-center gap-2 sm:flex">
+              <Button variant="outline" onClick={exportCsv}>
+                <Download className="size-4" />
+                Exportar CSV
+              </Button>
+              <Button variant="outline" onClick={() => setDensity((current) => (current === "comfortable" ? "compact" : "comfortable"))}>
+                <Rows3 className="size-4" />
+                {density === "comfortable" ? "Modo compacto" : "Modo confortável"}
+              </Button>
+              <Button onClick={openCreateSheet}>
+                <Plus className="size-4" />
+                Novo cliente
+              </Button>
+            </div>
           </div>
 
           <div className="-mx-1 mt-4 overflow-x-auto pb-1">
@@ -304,7 +568,18 @@ export function ClientsTable() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 rounded-[22px] border border-slate-200 bg-slate-50 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_170px_150px_150px_150px_auto]">
+          <div className="mt-4 flex flex-wrap gap-2">
+            {viewPresets.map((preset) => (
+              <Button key={preset.label} type="button" variant="outline" size="sm" className="rounded-full" onClick={() => applyPreset(preset.label)}>
+                {preset.label}
+              </Button>
+            ))}
+            <Badge variant="outline" className="rounded-full border-slate-200 bg-white text-slate-600">
+              Atalhos: / buscar · N novo cliente
+            </Badge>
+          </div>
+
+          <div className="mt-4 grid gap-3 rounded-[22px] border border-slate-200 bg-slate-50 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_170px_150px_150px_150px_160px_auto]">
             <select
               value={assigneeFilter}
               onChange={(event) => setAssigneeFilter(event.target.value)}
@@ -319,13 +594,13 @@ export function ClientsTable() {
               ))}
             </select>
 
-            <select value={osFilter} onChange={(event) => setOsFilter(event.target.value as typeof osFilter)} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+            <select value={osFilter} onChange={(event) => setOsFilter(event.target.value as PersistedFilters["osFilter"])} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
               <option value="Todos">Todas as O.S.</option>
               <option value="Com O.S.">Com O.S.</option>
               <option value="Sem O.S.">Sem O.S.</option>
             </select>
 
-            <select value={resolvedFilter} onChange={(event) => setResolvedFilter(event.target.value as typeof resolvedFilter)} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+            <select value={resolvedFilter} onChange={(event) => setResolvedFilter(event.target.value as PersistedFilters["resolvedFilter"])} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
               <option value="Todos">Todos os casos</option>
               <option value="Resolvidos">Resolvidos</option>
               <option value="Pendentes">Pendentes</option>
@@ -355,6 +630,14 @@ export function ClientsTable() {
               Sem atualização
             </button>
 
+            <select value={sortBy} onChange={(event) => setSortBy(event.target.value as SortOption)} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+              <option value="updated-desc">Mais recentes</option>
+              <option value="critical-first">Críticos primeiro</option>
+              <option value="services-desc">Mais recorrentes</option>
+              <option value="next-action-asc">Próxima ação</option>
+              <option value="name-asc">Nome A-Z</option>
+            </select>
+
             <Button variant="ghost" className="justify-center text-slate-500" onClick={clearFilters}>
               <X className="size-4" />
               Limpar
@@ -373,6 +656,7 @@ export function ClientsTable() {
               {staleOnly ? <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">Sem atualização</Badge> : null}
               {osFilter !== "Todos" ? <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">{osFilter}</Badge> : null}
               {resolvedFilter !== "Todos" ? <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">{resolvedFilter}</Badge> : null}
+              <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">{density === "compact" ? "Compacto" : "Confortável"}</Badge>
             </div>
           ) : null}
 
@@ -400,11 +684,13 @@ export function ClientsTable() {
                   const rowBusy = updatingClientId === client.id;
 
                   return (
-                    <div key={client.id} className={cn("relative px-4 py-5 transition duration-200 hover:bg-slate-50/70 lg:px-6", isCritical && "bg-amber-50/25")}>
+                    <div key={client.id} className={cn("relative px-4 transition duration-200 hover:bg-slate-50/70 lg:px-6", density === "compact" ? "py-3" : "py-5", isCritical && "bg-amber-50/25")}>
                       <div className="hidden grid-cols-[minmax(240px,1.2fr)_180px_90px_170px_160px_140px_120px_220px] items-start gap-4 lg:grid">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-semibold text-slate-950">{client.name}</p>
+                            <button type="button" className="truncate text-left font-semibold text-slate-950 transition hover:text-slate-700" onClick={() => openTimeline(client)}>
+                              {client.name}
+                            </button>
                             {isCritical ? <Badge className="bg-amber-100 text-amber-900">Crítico</Badge> : null}
                             {isStale ? <Badge className="bg-rose-100 text-rose-900">Atrasado</Badge> : null}
                           </div>
@@ -437,7 +723,7 @@ export function ClientsTable() {
                             aria-label={`Alterar status de ${client.name}`}
                             value={client.status}
                             disabled={rowBusy}
-                            onChange={(event) => void updateClientStatus(client.id, event.target.value as ClientStatus)}
+                            onChange={(event) => setPendingStatusChange({ clientId: client.id, nextStatus: event.target.value as ClientStatus })}
                             className={cn(
                               "h-10 w-full appearance-none rounded-full border px-4 text-sm font-semibold outline-none transition focus-visible:ring-4 focus-visible:ring-ring/50 disabled:opacity-60",
                               statusStyles[client.status],
@@ -449,7 +735,7 @@ export function ClientsTable() {
                               </option>
                             ))}
                           </select>
-                          {rowBusy ? <p className="mt-2 text-xs font-medium text-slate-400">Salvando status...</p> : null}
+                          {rowBusy ? <p className="mt-2 text-xs font-medium text-slate-400">Salvando status...</p> : <p className="mt-2 text-xs text-slate-400">Alteração com confirmação</p>}
                         </div>
 
                         <div>
@@ -492,8 +778,11 @@ export function ClientsTable() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="font-semibold text-slate-950">{client.name}</p>
+                              <button type="button" className="text-left font-semibold text-slate-950 transition hover:text-slate-700" onClick={() => openTimeline(client)}>
+                                {client.name}
+                              </button>
                               {isCritical ? <Badge className="bg-amber-100 text-amber-900">Crítico</Badge> : null}
+                              {isStale ? <Badge className="bg-rose-100 text-rose-900">Atrasado</Badge> : null}
                             </div>
                             <p className="mt-1 text-sm text-slate-500">{formatPhone(client.phone)}</p>
                             <p className="mt-2 text-xs text-slate-400">Atualizado {formatDateLabel(client.updatedAt)}</p>
@@ -519,7 +808,7 @@ export function ClientsTable() {
                             aria-label={`Alterar status de ${client.name}`}
                             value={client.status}
                             disabled={rowBusy}
-                            onChange={(event) => void updateClientStatus(client.id, event.target.value as ClientStatus)}
+                            onChange={(event) => setPendingStatusChange({ clientId: client.id, nextStatus: event.target.value as ClientStatus })}
                             className={cn(
                               "h-11 w-full appearance-none rounded-2xl border px-4 text-sm font-semibold outline-none transition focus-visible:ring-4 focus-visible:ring-ring/50 disabled:opacity-60",
                               statusStyles[client.status],
@@ -531,7 +820,7 @@ export function ClientsTable() {
                               </option>
                             ))}
                           </select>
-                          {rowBusy ? <p className="mt-2 text-xs font-medium text-slate-400">Salvando...</p> : null}
+                          {rowBusy ? <p className="mt-2 text-xs font-medium text-slate-400">Salvando...</p> : <p className="mt-2 text-xs text-slate-400">Alteração com confirmação</p>}
                         </div>
 
                         {client.description ? <p className="text-sm leading-6 text-slate-500">{client.description}</p> : null}
@@ -586,6 +875,37 @@ export function ClientsTable() {
         onSubmit={handleSave}
       />
       <ClientTimelineSheet open={timelineOpen} client={selectedClient} onClose={() => setTimelineOpen(false)} />
+
+      {pendingStatusChange ? (
+        <div className="fixed inset-0 z-[65] flex items-end justify-center bg-slate-950/50 p-3 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="w-full max-w-lg rounded-[28px] border border-white/80 bg-white p-5 shadow-2xl sm:p-6">
+            <div className="flex items-start gap-3">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-900">
+                <AlertTriangle className="size-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-950">Confirmar alteração de status</h3>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  O status será atualizado imediatamente e também vai entrar na timeline do cliente.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              Novo status: <span className="font-semibold text-slate-900">{pendingStatusChange.nextStatus}</span>
+            </div>
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" onClick={() => setPendingStatusChange(null)} disabled={updatingClientId !== null}>
+                Cancelar
+              </Button>
+              <Button onClick={() => void confirmStatusChange()} disabled={updatingClientId !== null}>
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

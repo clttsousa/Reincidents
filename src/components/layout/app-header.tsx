@@ -1,7 +1,7 @@
 "use client";
 
 import { LogOut, Plus } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
@@ -20,9 +20,16 @@ interface AppHeaderProps {
   };
 }
 
+function buildCreateUrl(searchParams: ReturnType<typeof useSearchParams>) {
+  const params = new URLSearchParams(searchParams.toString());
+  params.set("create", "1");
+  return `/clientes?${params.toString()}`;
+}
+
 export function AppHeader({ user }: AppHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const title = pageTitleByPath[pathname] ?? "Painel";
   const items = getNavigationForRole(user.role);
   const [signingOut, setSigningOut] = useState(false);
@@ -36,7 +43,12 @@ export function AppHeader({ user }: AppHeaderProps) {
       .join("") || "US";
 
   const handleQuickCreate = () => {
-    window.dispatchEvent(new CustomEvent("recorrenciaos:new-client"));
+    if (pathname === "/clientes") {
+      window.dispatchEvent(new CustomEvent("recorrenciaos:new-client"));
+      return;
+    }
+
+    router.push(buildCreateUrl(searchParams));
   };
 
   const handleSignOut = async () => {
@@ -64,7 +76,7 @@ export function AppHeader({ user }: AppHeaderProps) {
         </div>
 
         <div className="flex items-center gap-2 sm:hidden">
-          <Button variant="outline" size="icon" className="border-white/70 bg-white/80 shadow-none" onClick={handleQuickCreate}>
+          <Button variant="outline" size="icon" className="border-white/70 bg-white/80 shadow-none" onClick={handleQuickCreate} aria-label="Novo cliente">
             <Plus className="size-4" />
           </Button>
         </div>

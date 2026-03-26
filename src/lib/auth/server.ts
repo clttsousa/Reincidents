@@ -39,7 +39,13 @@ export async function getSessionOrRedirect() {
     redirect("/login?blocked=1");
   }
 
-  const session = {
+  try {
+    await supabase.rpc("touch_profile_last_login");
+  } catch {
+    // Melhor esforço: não bloquear a navegação se a função ainda não existir.
+  }
+
+  return {
     user: {
       id: user.id,
       email: user.email,
@@ -47,8 +53,6 @@ export async function getSessionOrRedirect() {
       role: normalizeRole(profile?.role),
     } satisfies AppSessionUser,
   };
-
-  return session;
 }
 
 export async function requireRole(allowedRoles: UserRole[]) {

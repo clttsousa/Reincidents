@@ -8,14 +8,29 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { formatDateLabel, formatPhone } from "@/lib/client-helpers";
+import { formatDateLabel, formatPhone, timelineActionLabel, toDateTimeLocalValue } from "@/lib/client-helpers";
 import { cn } from "@/lib/utils";
+import { useOverlayBehavior } from "@/hooks/use-overlay-behavior";
 import type { ClientRecord, ClientTimelineEntry } from "@/types/mock";
 
 interface ClientTimelineSheetProps {
   open: boolean;
   client: ClientRecord | null;
   onClose: () => void;
+}
+
+type TimelineFilter = "all" | "notes" | "history";
+
+function groupTimelineEntries(entries: ClientTimelineEntry[]) {
+  const formatter = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+  const groups = new Map<string, ClientTimelineEntry[]>();
+
+  entries.forEach((entry) => {
+    const key = formatter.format(new Date(entry.createdAt));
+    groups.set(key, [...(groups.get(key) ?? []), entry]);
+  });
+
+  return Array.from(groups.entries());
 }
 
 export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineSheetProps) {
@@ -25,6 +40,9 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
   const [note, setNote] = useState("");
   const [contactNote, setContactNote] = useState("");
   const [nextActionAt, setNextActionAt] = useState("");
+  const [filter, setFilter] = useState<TimelineFilter>("all");
+  const busy = Boolean(client && updatingClientId === client.id);
+  const panelRef = useOverlayBehavior({ open, onClose, disableClose: busy });
 
   useEffect(() => {
     if (!open || !client) return;
@@ -39,7 +57,7 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
           setTimeline(entries);
           setNote("");
           setContactNote("");
-          setNextActionAt(client.nextActionAt ? new Date(client.nextActionAt).toISOString().slice(0, 16) : "");
+          setNextActionAt(toDateTimeLocalValue(client.nextActionAt));
         }
       } finally {
         if (active) setLoading(false);
@@ -52,19 +70,31 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
     };
   }, [client, fetchClientTimeline, open]);
 
-  const busy = Boolean(client && updatingClientId === client.id);
   const overdueNextAction = useMemo(() => {
     if (!client?.nextActionAt) return false;
     return new Date(client.nextActionAt).getTime() < Date.now();
   }, [client?.nextActionAt]);
+
+  const filteredTimeline = useMemo(() => {
+    if (filter === "all") return timeline;
+    if (filter === "notes") return timeline.filter((entry) => entry.type === "note");
+    return timeline.filter((entry) => entry.type === "history");
+  }, [filter, timeline]);
+
+  const groupedTimeline = useMemo(() => groupTimelineEntries(filteredTimeline), [filteredTimeline]);
+
+  const reloadTimeline = async () => {
+    if (!client) return;
+    const entries = await fetchClientTimeline(client.id);
+    setTimeline(entries);
+  };
 
   const handleAddNote = async () => {
     if (!client) return;
     const success = await addClientNote(client.id, note);
     if (!success) return;
     setNote("");
-    const entries = await fetchClientTimeline(client.id);
-    setTimeline(entries);
+    await reloadTimeline();
   };
 
   const handleRegisterContact = async () => {
@@ -75,14 +105,13 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
     });
     if (!success) return;
     setContactNote("");
-    const entries = await fetchClientTimeline(client.id);
-    setTimeline(entries);
+    await reloadTimeline();
   };
 
   if (!open || !client) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-end bg-slate-950/35 backdrop-blur-sm md:items-stretch">
+    <div className="fixed inset-0 z-[60] flex items-end justify-end bg-slate-950/35 backdrop-blur-sm md:items-stretch" role="dialog" aria-modal="true" aria-label={`Timeline de ${client.name}`}>
       <button aria-label="Fechar timeline" className="h-full flex-1 cursor-default" onClick={busy ? undefined : onClose} type="button" />
       <div className="relative h-[94dvh] w-full overflow-y-auto rounded-t-[28px] border border-white/70 bg-white/95 shadow-2xl md:h-full md:max-w-2xl md:rounded-none md:border-y-0 md:border-r-0 md:border-l">
         <div className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/92 px-4 py-4 backdrop-blur sm:px-5 md:px-6">
@@ -101,7 +130,7 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
                 ) : null}
               </div>
             </div>
-            <Button type="button" variant="outline" size="icon" onClick={onClose} disabled={busy}>
+            <Button type="button" variant="outline" size="icon" onClick={onClose} disabled={busy} aria-label="Fechar timeline">
               <X className="size-4" />
             </Button>
           </div>
@@ -154,9 +183,16 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
           </section>
 
           <section className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Clock3 className="size-4 text-slate-500" />
-              <h3 className="font-semibold text-slate-950">Histórico cronológico</h3>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <Clock3 className="size-4 text-slate-500" />
+                <h3 className="font-semibold text-slate-950">Histórico cronológico</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant={filter === "all" ? "default" : "outline"} size="sm" onClick={() => setFilter("all")}>Tudo</Button>
+                <Button type="button" variant={filter === "notes" ? "default" : "outline"} size="sm" onClick={() => setFilter("notes")}>Notas</Button>
+                <Button type="button" variant={filter === "history" ? "default" : "outline"} size="sm" onClick={() => setFilter("history")}>Movimentações</Button>
+              </div>
             </div>
 
             {loading ? (
@@ -166,25 +202,34 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
                   Carregando timeline...
                 </div>
               </div>
-            ) : timeline.length === 0 ? (
+            ) : groupedTimeline.length === 0 ? (
               <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50/80 px-5 py-10 text-center">
                 <p className="font-medium text-slate-900">Nenhuma movimentação registrada ainda.</p>
                 <p className="mt-1 text-sm text-slate-500">As mudanças de status, notas e tentativas de contato vão aparecer aqui.</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {timeline.map((entry) => (
-                  <div key={entry.id} className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.16)]">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={entry.type === "note" ? "secondary" : "outline"} className="uppercase tracking-[0.14em]">{entry.badge ?? (entry.type === "note" ? "Nota" : "Evento")}</Badge>
-                      <p className="font-semibold text-slate-950">{entry.title}</p>
+              <div className="space-y-4">
+                {groupedTimeline.map(([groupLabel, entries]) => (
+                  <div key={groupLabel} className="space-y-3">
+                    <div className="sticky top-[86px] z-[1] inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-500 shadow-sm">
+                      {groupLabel}
                     </div>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{entry.description}</p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-400">
-                      <span>{entry.actorName}</span>
-                      <span>•</span>
-                      <span>{formatDateLabel(entry.createdAt)}</span>
-                    </div>
+                    {entries.map((entry) => (
+                      <div key={entry.id} className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.16)]">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant={entry.type === "note" ? "secondary" : "outline"} className="uppercase tracking-[0.14em]">
+                            {timelineActionLabel(entry)}
+                          </Badge>
+                          <p className="font-semibold text-slate-950">{entry.title}</p>
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">{entry.description}</p>
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-400">
+                          <span>{entry.actorName}</span>
+                          <span>•</span>
+                          <span>{formatDateLabel(entry.createdAt)}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>

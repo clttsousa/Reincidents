@@ -1,14 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Inter } from "next/font/google";
 
 import "@/app/globals.css";
 import { ToastProvider } from "@/components/providers/toast-provider";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -25,7 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={`${inter.variable} min-h-screen bg-background font-sans text-foreground`}>
+      <body className="min-h-screen bg-background font-sans text-foreground">
         <ToastProvider>{children}</ToastProvider>
       </body>
     </html>

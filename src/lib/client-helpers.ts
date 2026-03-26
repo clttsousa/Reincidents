@@ -13,18 +13,53 @@ export function sanitizePhone(phone: string) {
   return phone.replace(/\D/g, "");
 }
 
+function normalizeWhatsappDigits(phone: string) {
+  const digits = sanitizePhone(phone);
+
+  if (digits.length === 10 || digits.length === 11) {
+    return `55${digits}`;
+  }
+
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith("55")) {
+    return digits;
+  }
+
+  return digits;
+}
+
 export function formatPhone(phone: string) {
   const digits = sanitizePhone(phone);
 
+  if (digits.length === 13 && digits.startsWith("55")) {
+    return `+55 (${digits.slice(2, 4)}) ${digits.slice(4, 9)}-${digits.slice(9)}`;
+  }
+
   if (digits.length === 12 && digits.startsWith("55")) {
-    return `(${digits.slice(2, 4)}) ${digits.slice(4, 9)}-${digits.slice(9)}`;
+    return `+55 (${digits.slice(2, 4)}) ${digits.slice(4, 8)}-${digits.slice(8)}`;
   }
 
   if (digits.length === 11) {
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
   }
 
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+
   return phone;
+}
+
+export function formatPhoneInput(phone: string) {
+  const digits = sanitizePhone(phone).slice(0, 13);
+
+  if (digits.startsWith("55") && digits.length > 2) {
+    return formatPhone(digits);
+  }
+
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
 }
 
 export function formatDateLabel(value: string) {
@@ -70,6 +105,7 @@ export function toDateTimeLocalValue(value: string) {
 
 export function fromDateTimeLocalValue(value: string) {
   if (!value) return "";
+
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString();
 }
@@ -80,18 +116,27 @@ export function daysSinceUpdate(value: string) {
   return Math.floor((Date.now() - date.getTime()) / 86400000);
 }
 
-export function isCriticalClient(client: Pick<ClientRecord, "totalServices" | "status" | "resolved" | "nextActionAt">) {
+export function hasOpenOs(client: Pick<ClientRecord, "osOpen" | "status" | "resolved">) {
+  if (client.resolved) return false;
+  return client.osOpen || client.status === "O.S. aberta";
+}
+
+export function isCriticalClient(client: Pick<ClientRecord, "totalServices" | "status" | "nextActionAt" | "updatedAt" | "osOpen" | "resolved">) {
   const overdueNextAction = Boolean(client.nextActionAt) && new Date(client.nextActionAt).getTime() < Date.now();
-  return client.totalServices >= 11 || client.status === "Sem retorno" || overdueNextAction || !client.resolved;
+  const recurringPressure = client.totalServices >= 8;
+  const staleOpenOs = hasOpenOs(client) && daysSinceUpdate(client.updatedAt) >= 2;
+
+  return recurringPressure || client.status === "Sem retorno" || overdueNextAction || staleOpenOs;
 }
 
 export function isStaleClient(client: Pick<ClientRecord, "updatedAt">, threshold = 3) {
   return daysSinceUpdate(client.updatedAt) >= threshold;
 }
 
-export function getOsLabel(client: Pick<ClientRecord, "osOpen" | "resolved" | "osNumber">) {
-  if (!client.osOpen && !client.osNumber) return "Não aberta";
-  if (client.resolved) return "Concluída";
+export function getOsLabel(client: Pick<ClientRecord, "osOpen" | "resolved" | "osNumber" | "status">) {
+  if (client.resolved && client.osNumber) return `Concluída · ${client.osNumber}`;
+  if (!hasOpenOs(client) && !client.osNumber) return "Não aberta";
+  if (!hasOpenOs(client) && client.osNumber) return `Fechada · ${client.osNumber}`;
   return client.osNumber ? client.osNumber : "Aberta";
 }
 
@@ -124,7 +169,7 @@ export function clientToFormValues(client?: ClientRecord): ClientFormValues {
 
   return {
     name: client.name,
-    phone: client.phone,
+    phone: formatPhoneInput(client.phone),
     totalServices: client.totalServices,
     description: client.description,
     status: client.status,
@@ -140,8 +185,10 @@ export function clientToFormValues(client?: ClientRecord): ClientFormValues {
 
 export function normalizeClientPayload(values: ClientFormValues, assignees: AssigneeOption[]) {
   const phone = sanitizePhone(values.phone);
-  const resolved = values.status === "Resolvido" ? true : values.resolved;
-  const osOpen = values.status === "O.S. aberta" || resolved ? true : values.osOpen;
+  const requestedResolved = values.status === "Resolvido" || values.resolved;
+  const resolved = requestedResolved;
+  const status = resolved ? "Resolvido" : values.status;
+  const osOpen = resolved ? false : status === "O.S. aberta" || values.osOpen;
   const selectedAssignee = assignees.find((option) => option.id === values.responsibleUserId);
 
   return {
@@ -149,12 +196,12 @@ export function normalizeClientPayload(values: ClientFormValues, assignees: Assi
     phone,
     totalServices: values.totalServices,
     description: values.description.trim(),
-    status: values.status,
+    status,
     responsibleUserId: values.responsibleUserId || "",
     assignee: selectedAssignee?.name ?? "Equipe",
     responsibleEmail: selectedAssignee?.email ?? "",
     notes: values.notes.trim(),
-    osNumber: osOpen ? values.osNumber.trim() : "",
+    osNumber: values.osNumber.trim(),
     resolved,
     osOpen,
     lastContactAt: fromDateTimeLocalValue(values.lastContactAt),
@@ -165,15 +212,16 @@ export function normalizeClientPayload(values: ClientFormValues, assignees: Assi
 export function validateClientForm(values: ClientFormValues) {
   const errors: Partial<Record<keyof ClientFormValues, string>> = {};
   const digits = sanitizePhone(values.phone);
+  const validPhone = digits.length === 10 || digits.length === 11 || ((digits.length === 12 || digits.length === 13) && digits.startsWith("55"));
 
   if (values.name.trim().length < 3) errors.name = "Informe o nome completo do cliente.";
-  if (digits.length < 10 || digits.length > 13) errors.phone = "Informe um telefone válido com DDD.";
+  if (!validPhone) errors.phone = "Informe um telefone válido com DDD. Ex.: (34) 99999-1234.";
   if (!Number.isFinite(values.totalServices) || values.totalServices < 1) {
     errors.totalServices = "O total de atendimentos deve ser maior que zero.";
   }
   if (values.responsibleUserId.trim().length < 3) errors.responsibleUserId = "Selecione um responsável do sistema.";
-  if ((values.osOpen || values.status === "O.S. aberta") && values.osNumber.trim().length < 3) {
-    errors.osNumber = "Preencha o número da O.S. quando houver ordem aberta.";
+  if ((values.osOpen || values.status === "O.S. aberta" || values.status === "Resolvido") && values.osNumber.trim().length < 3) {
+    errors.osNumber = "Preencha o número da O.S. quando houver ordem aberta ou concluída.";
   }
   if (values.notes.trim().length > 0 && values.notes.trim().length < 6) {
     errors.notes = "A observação deve ter pelo menos 6 caracteres ou ficar vazia.";
@@ -193,7 +241,7 @@ export function buildStats(clients: ClientRecord[]): ClientStats {
   return {
     total: clients.length,
     waiting: clients.filter((client) => client.status === "Aguardando contato").length,
-    os: clients.filter((client) => client.osOpen).length,
+    os: clients.filter(hasOpenOs).length,
     solved: clients.filter((client) => client.resolved).length,
     noReturn: clients.filter((client) => client.status === "Sem retorno").length,
     critical: clients.filter(isCriticalClient).length,
@@ -202,8 +250,7 @@ export function buildStats(clients: ClientRecord[]): ClientStats {
 }
 
 export function buildWhatsappLink(phone: string) {
-  const digits = sanitizePhone(phone);
-  return `https://wa.me/${digits}`;
+  return `https://wa.me/${normalizeWhatsappDigits(phone)}`;
 }
 
 export function timelineActionLabel(entry: ClientTimelineEntry) {
