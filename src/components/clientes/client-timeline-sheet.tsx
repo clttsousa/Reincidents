@@ -47,17 +47,18 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
   useEffect(() => {
     if (!open || !client) return;
 
+    const currentClient = client;
     let active = true;
 
     async function loadTimeline() {
       setLoading(true);
       try {
-        const entries = await fetchClientTimeline(client.id);
+        const entries = await fetchClientTimeline(currentClient.id);
         if (active) {
           setTimeline(entries);
           setNote("");
           setContactNote("");
-          setNextActionAt(toDateTimeLocalValue(client.nextActionAt));
+          setNextActionAt(toDateTimeLocalValue(currentClient.nextActionAt));
         }
       } finally {
         if (active) setLoading(false);

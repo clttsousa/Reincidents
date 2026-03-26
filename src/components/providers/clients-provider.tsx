@@ -6,7 +6,7 @@ import { buildStats, normalizeClientPayload } from "@/lib/client-helpers";
 import { createClient } from "@/lib/supabase/client";
 import type { AssigneeOption, ClientFormValues, ClientRecord, ClientStats, ClientStatus, ClientTimelineEntry } from "@/types/mock";
 import { useToast } from "@/components/providers/toast-provider";
-import { buildTimelineEntries, fetchClients, fetchProfiles, sortClients } from "@/lib/services/client-service";
+import { buildTimelineEntries, fetchClients, fetchProfiles, mapRowToRecord, sortClients, type ClientRow } from "@/lib/services/client-service";
 
 interface ClientsContextValue {
   clients: ClientRecord[];

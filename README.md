@@ -156,3 +156,17 @@ Painel interno para gestão de clientes recorrentes com problemas de conexão, c
 - O endurecimento administrativo continua dependendo do `update-v4.0-hardening.sql` já aplicado no banco.
 - Como esta versão moveu a carga de clientes para páginas específicas, a área de configurações fica mais leve por não carregar a carteira inteira em segundo plano.
 - Rode sempre `npm run lint`, `npm run typecheck` e `npm run build` no seu ambiente antes do deploy final.
+
+
+## Verificação antes do deploy
+
+Rode sempre nesta ordem antes de subir para a Vercel:
+
+```bash
+npm install
+npm run lint
+npm run typecheck
+npm run build
+```
+
+Se existir um arquivo `eslint.config.mjs` antigo na raiz, remova antes do commit. O projeto usa `.eslintrc.json`.

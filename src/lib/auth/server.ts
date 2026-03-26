@@ -29,10 +29,12 @@ export async function getSessionOrRedirect() {
     redirect("/login");
   }
 
+  const currentUser = user;
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("id, full_name, role, is_active")
-    .eq("id", user.id)
+    .eq("id", currentUser.id)
     .maybeSingle();
 
   if (profile && profile.is_active === false) {
@@ -47,9 +49,9 @@ export async function getSessionOrRedirect() {
 
   return {
     user: {
-      id: user.id,
-      email: user.email,
-      name: profile?.full_name ?? user.user_metadata?.full_name ?? user.email ?? "Usuário",
+      id: currentUser.id,
+      email: currentUser.email,
+      name: profile?.full_name ?? currentUser.user_metadata?.full_name ?? currentUser.email ?? "Usuário",
       role: normalizeRole(profile?.role),
     } satisfies AppSessionUser,
   };

@@ -1,14 +1,15 @@
 {
   "name": "recorrenciaos",
-  "version": "4.3.1",
+  "version": "4.3.3",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "lint:fix": "next lint --fix",
-    "typecheck": "tsc --noEmit"
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx --max-warnings=0",
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
+    "typecheck": "tsc --noEmit",
+    "verify:predeploy": "npm run typecheck && npm run build"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
