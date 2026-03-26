@@ -66,10 +66,13 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
 
   const updateValue = <K extends keyof ClientFormValues>(field: K, value: ClientFormValues[K]) => {
     setValues((current) => {
-      const next = { ...current, [field]: value };
+      const next: ClientFormValues = { ...current, [field]: value } as ClientFormValues;
 
       if (field === "phone") {
-        next.phone = formatPhoneInput(String(value)) as ClientFormValues[K];
+        return {
+          ...next,
+          phone: formatPhoneInput(String(value ?? "")),
+        };
       }
 
       if (field === "status") {
