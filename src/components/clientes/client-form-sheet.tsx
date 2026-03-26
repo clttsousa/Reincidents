@@ -30,7 +30,7 @@ function FieldLabel({ label, required = false, helper }: { label: string; requir
           {required ? <span className="ml-1 text-red-500">*</span> : null}
         </span>
       </div>
-      {helper ? <span className="mt-1 block text-xs font-normal text-slate-500">{helper}</span> : null}
+      {helper ? <span className="mt-1 block text-xs font-normal text-slate-500 dark:text-slate-400 dark:text-slate-500">{helper}</span> : null}
     </label>
   );
 }
@@ -137,10 +137,10 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
                 <Badge className="w-fit shadow-[0_16px_30px_-24px_rgba(15,23,42,0.4)]">Cadastro rápido</Badge>
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight text-slate-950 md:text-2xl">{title}</h2>
-                  <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">{subtitle}</p>
                 </div>
               </div>
-              <Button type="button" variant="outline" size="icon" className="border-white/80 bg-white" onClick={onClose} disabled={submitting} aria-label="Fechar">
+              <Button type="button" variant="outline" size="icon" className="border-white/80 bg-white dark:bg-slate-800/60" onClick={onClose} disabled={submitting} aria-label="Fechar">
                 <X className="size-4" />
               </Button>
             </div>
@@ -149,25 +149,25 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
           <div className="flex-1 space-y-5 px-4 py-4 sm:px-5 md:space-y-6 md:px-7 md:py-6">
             <section className="surface-muted grid gap-4 rounded-[28px] p-4 sm:p-5 lg:grid-cols-[1.2fr_0.8fr]">
               <div>
-                <p className="text-sm font-medium text-slate-900">Prévia operacional</p>
-                <p className="mt-1 text-sm text-slate-500">Os dados abaixo aparecem na fila e ajudam a equipe a agir rápido.</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Prévia operacional</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">Os dados abaixo aparecem na fila e ajudam a equipe a agir rápido.</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
                 <div className="rounded-[22px] border border-white bg-white px-4 py-3 shadow-[0_16px_28px_-24px_rgba(15,23,42,0.18)]">
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Telefone</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{previewPhone || "(00) 00000-0000"}</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Telefone</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{previewPhone || "(00) 00000-0000"}</p>
                 </div>
                 <div className="rounded-[22px] border border-white bg-white px-4 py-3 shadow-[0_16px_28px_-24px_rgba(15,23,42,0.18)]">
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Responsável</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{selectedAssignee?.name ?? "Selecione um usuário"}</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Responsável</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{selectedAssignee?.name ?? "Selecione um usuário"}</p>
                 </div>
               </div>
             </section>
 
             <section className="space-y-4">
               <div className="flex items-center gap-2">
-                <ClipboardList className="size-4 text-slate-500" />
-                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Dados principais</h3>
+                <ClipboardList className="size-4 text-slate-500 dark:text-slate-400 dark:text-slate-500" />
+                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 dark:text-slate-500">Dados principais</h3>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
@@ -177,7 +177,7 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
                     value={values.name}
                     onChange={(event) => updateValue("name", event.target.value)}
                     placeholder="Ex.: Rosilene Souza Zampieri"
-                    className="border-slate-200 bg-white"
+                    className="border-slate-200 bg-white dark:bg-slate-800/60"
                   />
                   <ErrorText message={errors.name} />
                 </div>
@@ -187,7 +187,7 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
                     value={values.phone}
                     onChange={(event) => updateValue("phone", event.target.value)}
                     placeholder="(34) 99999-1234"
-                    className="border-slate-200 bg-white"
+                    className="border-slate-200 bg-white dark:bg-slate-800/60"
                     inputMode="tel"
                   />
                   <ErrorText message={errors.phone} />
@@ -199,7 +199,7 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
                     min={1}
                     value={values.totalServices}
                     onChange={(event) => updateValue("totalServices", Number(event.target.value))}
-                    className="border-slate-200 bg-white"
+                    className="border-slate-200 bg-white dark:bg-slate-800/60"
                   />
                   <ErrorText message={errors.totalServices} />
                 </div>
@@ -226,8 +226,8 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
 
             <section className="space-y-4">
               <div className="flex items-center gap-2">
-                <AlertCircle className="size-4 text-slate-500" />
-                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Contexto operacional</h3>
+                <AlertCircle className="size-4 text-slate-500 dark:text-slate-400 dark:text-slate-500" />
+                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 dark:text-slate-500">Contexto operacional</h3>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="md:col-span-2">
@@ -236,7 +236,7 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
                     value={values.description}
                     onChange={(event) => updateValue("description", event.target.value)}
                     placeholder="Ex.: Cliente relata lentidão constante na TV e nos celulares. Já houve recorrência e possível necessidade de visita técnica."
-                    className="min-h-[112px] border-slate-200 bg-white"
+                    className="min-h-[112px] border-slate-200 bg-white dark:bg-slate-800/60"
                   />
                 </div>
                 <div>
@@ -259,7 +259,7 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
                     value={values.osNumber}
                     onChange={(event) => updateValue("osNumber", event.target.value)}
                     placeholder="Ex.: OS-002526"
-                    className="border-slate-200 bg-white"
+                    className="border-slate-200 bg-white dark:bg-slate-800/60"
                   />
                   <ErrorText message={errors.osNumber} />
                 </div>
@@ -269,7 +269,7 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
                     type="datetime-local"
                     value={values.lastContactAt}
                     onChange={(event) => updateValue("lastContactAt", event.target.value)}
-                    className="border-slate-200 bg-white"
+                    className="border-slate-200 bg-white dark:bg-slate-800/60"
                   />
                 </div>
                 <div>
@@ -278,7 +278,7 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
                     type="datetime-local"
                     value={values.nextActionAt}
                     onChange={(event) => updateValue("nextActionAt", event.target.value)}
-                    className="border-slate-200 bg-white"
+                    className="border-slate-200 bg-white dark:bg-slate-800/60"
                   />
                   <ErrorText message={errors.nextActionAt} />
                 </div>
@@ -288,16 +288,16 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
             <section className="surface-muted grid gap-4 rounded-[28px] p-4 sm:p-5 lg:grid-cols-[1fr_1fr_1.2fr]">
               <div className="rounded-[24px] border border-white bg-white p-4 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.18)]">
                 <div className="flex items-start gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+                  <div className="flex size-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 dark:text-slate-300">
                     <UserRound className="size-4" />
                   </div>
                   <div>
-                    <p className="font-medium text-slate-900">O.S. em andamento</p>
-                    <p className="mt-1 text-sm text-slate-500">Use quando o caso segue aberto na operação.</p>
+                    <p className="font-medium text-slate-900 dark:text-slate-100">O.S. em andamento</p>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">Use quando o caso segue aberto na operação.</p>
                   </div>
                 </div>
                 <label className="mt-4 flex cursor-pointer items-center justify-between rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3">
-                  <span className="text-sm font-medium text-slate-700">Manter O.S. aberta</span>
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Manter O.S. aberta</span>
                   <input type="checkbox" checked={values.osOpen} onChange={(event) => updateValue("osOpen", event.target.checked)} className="size-4 accent-slate-900" disabled={values.resolved} />
                 </label>
               </div>
@@ -308,26 +308,26 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
                     <CheckCircle2 className="size-4" />
                   </div>
                   <div>
-                    <p className="font-medium text-slate-900">Caso resolvido</p>
-                    <p className="mt-1 text-sm text-slate-500">Fecha o caso e tira a O.S. do total aberto.</p>
+                    <p className="font-medium text-slate-900 dark:text-slate-100">Caso resolvido</p>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">Fecha o caso e tira a O.S. do total aberto.</p>
                   </div>
                 </div>
                 <label className="mt-4 flex cursor-pointer items-center justify-between rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3">
-                  <span className="text-sm font-medium text-slate-700">Marcar como resolvido</span>
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Marcar como resolvido</span>
                   <input type="checkbox" checked={values.resolved} onChange={(event) => updateValue("resolved", event.target.checked)} className="size-4 accent-emerald-600" />
                 </label>
               </div>
 
               <div className="rounded-[24px] border border-white bg-white p-4 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.18)]">
-                <p className="font-medium text-slate-900">Observação interna</p>
-                <p className="mt-1 text-sm text-slate-500">Tudo que a equipe precisa saber sem depender de memória ou conversa paralela.</p>
+                <p className="font-medium text-slate-900 dark:text-slate-100">Observação interna</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">Tudo que a equipe precisa saber sem depender de memória ou conversa paralela.</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {["Cliente prefere ligação", "Agendar retorno", "Visita técnica provável"].map((template) => (
                     <button
                       key={template}
                       type="button"
                       onClick={() => updateValue("notes", values.notes ? `${values.notes.trim()} · ${template}` : template)}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:bg-slate-800/40"
                     >
                       {template}
                     </button>
@@ -337,15 +337,15 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
                   value={values.notes}
                   onChange={(event) => updateValue("notes", event.target.value)}
                   placeholder="Ex.: Cliente idoso, prefere contato por ligação após 14h, já reclamou duas vezes da mesma TV box."
-                  className="mt-4 min-h-[132px] border-slate-200 bg-slate-50/85"
+                  className="mt-4 min-h-[132px] border-slate-200 bg-slate-50/85 dark:bg-slate-800/50"
                 />
                 <ErrorText message={errors.notes} />
               </div>
             </section>
 
             {client?.updatedAt ? (
-              <div className="rounded-[22px] border border-slate-200 bg-slate-50/85 px-4 py-3 text-sm text-slate-500">
-                Última atualização registrada: <span className="font-medium text-slate-700">{formatDateLabel(client.updatedAt)}</span>
+              <div className="rounded-[22px] border border-slate-200 bg-slate-50/85 px-4 py-3 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
+                Última atualização registrada: <span className="font-medium text-slate-700 dark:text-slate-300">{formatDateLabel(client.updatedAt)}</span>
               </div>
             ) : null}
           </div>

@@ -22,6 +22,7 @@ import {
 import { ClientFormSheet } from "@/components/clientes/client-form-sheet";
 import { ClientTimelineSheet } from "@/components/clientes/client-timeline-sheet";
 import { useClients } from "@/components/providers/clients-provider";
+import { useToast } from "@/components/providers/toast-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,8 +71,8 @@ function MetricCard({ label, value, helper, className }: { label: string; value:
   return (
     <div className={cn("surface-card rounded-[24px] p-4", className)}>
       <p className="text-xs text-slate-500 sm:text-sm">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">{value}</p>
-      {helper ? <p className="mt-1 text-xs text-slate-400">{helper}</p> : null}
+      <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">{value}</p>
+      {helper ? <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{helper}</p> : null}
     </div>
   );
 }
@@ -85,7 +86,7 @@ function LoadingState() {
         ))}
       </div>
       <div className="surface-card rounded-[30px] p-6">
-        <div className="skeleton-shimmer h-11 rounded-2xl bg-slate-100" />
+        <div className="skeleton-shimmer h-11 rounded-2xl bg-slate-100 dark:bg-slate-700/60" />
         <div className="mt-4 space-y-3">
           {Array.from({ length: 5 }).map((_, index) => (
             <div key={index} className="skeleton-shimmer h-[92px] rounded-[24px] bg-slate-100/80" />
@@ -102,8 +103,8 @@ function EmptyState({ onClear, onCreate }: { onClear: () => void; onCreate: () =
       <div className="flex size-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.2)]">
         <Search className="size-5" />
       </div>
-      <h3 className="mt-4 text-lg font-semibold text-slate-950">Nenhum cliente encontrado</h3>
-      <p className="mt-2 max-w-md text-sm text-slate-500">
+      <h3 className="mt-4 text-lg font-semibold text-slate-950 dark:text-slate-50">Nenhum cliente encontrado</h3>
+      <p className="mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
         Se a base estiver vazia, crie o primeiro cliente. Se você estiver usando filtros, limpe-os para voltar a exibir a carteira completa.
       </p>
       <div className="mt-5 flex flex-col gap-2 sm:flex-row">
@@ -226,6 +227,7 @@ export function ClientsTable() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { clients, stats, staleClients, assignees, loading, formSubmitting, updatingClientId, addClient, updateClient, updateClientStatus } = useClients();
+  const { pushToast } = useToast();
 
   const [searchInput, setSearchInput] = useState("");
   const [activeFilter, setActiveFilter] = useState<(typeof quickFilters)[number]["value"]>("Todos");
@@ -383,6 +385,21 @@ export function ClientsTable() {
     return sortClients(result, sortBy);
   }, [activeFilter, assigneeFilter, clients, criticalOnly, osFilter, resolvedFilter, search, sortBy, staleOnly]);
 
+  const filteredInsights = useMemo(() => {
+    const critical = filteredClients.filter((client) => isCriticalClient(client)).length;
+    const overdue = filteredClients.filter((client) => !client.resolved && client.nextActionAt && new Date(client.nextActionAt).getTime() < Date.now()).length;
+    const dueSoon = filteredClients.filter((client) => {
+      if (client.resolved || !client.nextActionAt) return false;
+      const time = new Date(client.nextActionAt).getTime();
+      return time >= Date.now() && time <= Date.now() + 2 * 86400000;
+    }).length;
+    const openOs = filteredClients.filter((client) => hasOpenOs(client)).length;
+
+    return { critical, overdue, dueSoon, openOs };
+  }, [filteredClients]);
+
+  const activeFilterCount = [activeFilter !== "Todos", assigneeFilter !== "Todos", criticalOnly, staleOnly, osFilter !== "Todos", resolvedFilter !== "Todos"].filter(Boolean).length;
+
   const handleCopyPhone = async (client: ClientRecord) => {
     const text = formatPhone(client.phone);
 
@@ -434,6 +451,7 @@ export function ClientsTable() {
     setResolvedFilter(defaults.resolvedFilter);
     setSortBy(defaults.sortBy);
     setDensity(defaults.density);
+    pushToast({ tone: "info", title: "Filtros limpos", description: "A carteira voltou para a visão completa.", durationMs: 3200 });
   };
 
   const applyPreset = (label: string) => {
@@ -448,6 +466,13 @@ export function ClientsTable() {
       setOsFilter,
       setResolvedFilter,
       setSortBy,
+    });
+
+    pushToast({
+      tone: "info",
+      title: `Visão aplicada: ${label}`,
+      description: "Os filtros foram ajustados para focar nessa carteira.",
+      durationMs: 3200,
     });
   };
 
@@ -473,6 +498,12 @@ export function ClientsTable() {
     link.download = `recorrenciaos-clientes-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+    pushToast({
+      tone: "success",
+      title: "CSV gerado",
+      description: `${filteredClients.length} clientes foram exportados para análise externa.`,
+      durationMs: 3600,
+    });
   };
 
   const confirmStatusChange = async () => {
@@ -494,6 +525,66 @@ export function ClientsTable() {
           <MetricCard label="O.S. abertas" value={String(stats.os)} helper="Em andamento" />
           <MetricCard label="Resolvidos" value={String(stats.solved)} helper="Concluídos" />
           <MetricCard label="Sem retorno" value={String(stats.noReturn)} helper="Sem resposta" />
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="surface-dark rounded-[30px] p-5 text-white shadow-[0_28px_70px_-44px_rgba(15,23,42,0.68)]">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-2xl">
+                <Badge className="border-white/10 bg-white/10 text-white">Carteira premium</Badge>
+                <h2 className="mt-4 text-2xl font-semibold tracking-tight">Leitura rápida da carteira com filtros, contexto e ações mais claras</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-200">Veja primeiro o que exige resposta imediata, o que está sem responsável e o que já entrou em zona de atraso sem precisar escanear a tabela inteira.</p>
+              </div>
+              <div className="rounded-[24px] border border-white/10 bg-white/8 px-4 py-3 text-right">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-300">Visão atual</p>
+                <p className="mt-2 text-3xl font-semibold text-white">{filteredClients.length}</p>
+                <p className="mt-1 text-xs text-slate-300">clientes exibidos</p>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-4">
+              <div className="rounded-[22px] border border-white/10 bg-white/6 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-300">Críticos</p>
+                <p className="mt-2 text-2xl font-semibold text-white">{filteredInsights.critical}</p>
+                <p className="mt-1 text-xs text-slate-300">pressão atual</p>
+              </div>
+              <div className="rounded-[22px] border border-white/10 bg-white/6 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-300">Vencidos</p>
+                <p className="mt-2 text-2xl font-semibold text-white">{filteredInsights.overdue}</p>
+                <p className="mt-1 text-xs text-slate-300">fora do prazo</p>
+              </div>
+              <div className="rounded-[22px] border border-white/10 bg-white/6 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-300">Próx. 48h</p>
+                <p className="mt-2 text-2xl font-semibold text-white">{filteredInsights.dueSoon}</p>
+                <p className="mt-1 text-xs text-slate-300">janela de atenção</p>
+              </div>
+              <div className="rounded-[22px] border border-white/10 bg-white/6 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-300">Com O.S.</p>
+                <p className="mt-2 text-2xl font-semibold text-white">{filteredInsights.openOs}</p>
+                <p className="mt-1 text-xs text-slate-300">em operação</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <div className="rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.96))] p-4 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.16)]">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Contexto</p>
+                  <p className="mt-2 text-lg font-semibold text-slate-950 dark:text-slate-50">{activeFilterCount > 0 ? `${activeFilterCount} filtros ativos` : "Carteira completa"}</p>
+                </div>
+                <Badge variant="outline">{density === "compact" ? "Compacta" : "Confortável"}</Badge>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400 dark:text-slate-500">{activeFilterCount > 0 ? "A tela está priorizando uma visão específica da operação para reduzir ruído visual." : "Todos os clientes recorrentes estão visíveis, sem restrições adicionais."}</p>
+            </div>
+            <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.16)]">
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Atalhos úteis</p>
+              <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400 dark:text-slate-500">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">/ busca</span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">N novo cliente</span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">CSV exportação</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {staleClients.length > 0 ? (
@@ -518,7 +609,7 @@ export function ClientsTable() {
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row lg:items-center">
               <div className="relative w-full lg:w-[360px] lg:flex-none">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <Input
                   ref={searchInputRef}
                   value={searchInput}
@@ -547,12 +638,23 @@ export function ClientsTable() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
-              Use <span className="font-semibold text-slate-900">/</span> para focar na busca e <span className="font-semibold text-slate-900">N</span> para abrir cadastro rápido sem tirar a mão do teclado.
+          <div className="mt-4 grid gap-3 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">
+              Use <span className="font-semibold text-slate-900 dark:text-slate-100">/</span> para focar na busca e <span className="font-semibold text-slate-900 dark:text-slate-100">N</span> para abrir cadastro rápido sem tirar a mão do teclado.
             </div>
-            <div className="rounded-[24px] border border-slate-200 bg-white/92 px-4 py-3 text-sm text-slate-600 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.14)]">
-              {criticalOnly || staleOnly || activeFilter !== "Todos" || assigneeFilter !== "Todos" || osFilter !== "Todos" || resolvedFilter !== "Todos" ? "Você está vendo uma carteira filtrada." : "Você está vendo a carteira completa."}
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-[24px] border border-slate-200 bg-white/92 px-4 py-3 text-sm text-slate-600 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.14)]">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Críticos</p>
+                <p className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">{filteredInsights.critical}</p>
+              </div>
+              <div className="rounded-[24px] border border-slate-200 bg-white/92 px-4 py-3 text-sm text-slate-600 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.14)]">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Vencidos</p>
+                <p className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">{filteredInsights.overdue}</p>
+              </div>
+              <div className="rounded-[24px] border border-slate-200 bg-white/92 px-4 py-3 text-sm text-slate-600 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.14)]">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Próx. ação</p>
+                <p className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">{filteredInsights.dueSoon}</p>
+              </div>
             </div>
           </div>
 
@@ -567,7 +669,7 @@ export function ClientsTable() {
                     onClick={() => setActiveFilter(filter.value)}
                     className={cn(
                       "inline-flex shrink-0 items-center rounded-full border px-4 py-2 text-sm font-medium transition-all",
-                      isActive ? "chip-active" : "chip-neutral hover:border-slate-300 hover:bg-slate-50",
+                      isActive ? "chip-active" : "chip-neutral hover:border-slate-300 hover:bg-slate-50 dark:bg-slate-800/40",
                     )}
                   >
                     {filter.label}
@@ -579,7 +681,7 @@ export function ClientsTable() {
 
           <div className="mt-4 flex flex-wrap gap-2">
             {viewPresets.map((preset) => (
-              <Button key={preset.label} type="button" variant="outline" size="sm" className="rounded-full border-slate-200/90 bg-white/90" onClick={() => applyPreset(preset.label)}>
+              <Button key={preset.label} type="button" variant="outline" size="sm" className="rounded-full border-slate-200/90 bg-white/90 dark:bg-slate-800/60" onClick={() => applyPreset(preset.label)}>
                 {preset.label}
               </Button>
             ))}
@@ -620,7 +722,7 @@ export function ClientsTable() {
               onClick={() => setCriticalOnly((current) => !current)}
               className={cn(
                 "inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition",
-                criticalOnly ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-white text-slate-600",
+                criticalOnly ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-white text-slate-600 dark:text-slate-400 dark:text-slate-500",
               )}
             >
               <Sparkles className="size-4" />
@@ -632,7 +734,7 @@ export function ClientsTable() {
               onClick={() => setStaleOnly((current) => !current)}
               className={cn(
                 "inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition",
-                staleOnly ? "border-rose-300 bg-rose-50 text-rose-900" : "border-slate-200 bg-white text-slate-600",
+                staleOnly ? "border-rose-300 bg-rose-50 text-rose-900" : "border-slate-200 bg-white text-slate-600 dark:text-slate-400 dark:text-slate-500",
               )}
             >
               <Clock3 className="size-4" />
@@ -647,26 +749,37 @@ export function ClientsTable() {
               <option value="name-asc">Nome A-Z</option>
             </select>
 
-            <Button variant="ghost" className="justify-center text-slate-500" onClick={clearFilters}>
+            <Button variant="ghost" className="justify-center text-slate-500 dark:text-slate-400 dark:text-slate-500" onClick={clearFilters}>
               <X className="size-4" />
               Limpar
             </Button>
           </div>
 
           {(activeFilter !== "Todos" || assigneeFilter !== "Todos" || criticalOnly || staleOnly || osFilter !== "Todos" || resolvedFilter !== "Todos") ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {activeFilter !== "Todos" ? <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700">Status: {activeFilter}</Badge> : null}
+            <div className="mt-4 space-y-3">
+              <div className="flex items-start gap-3 rounded-[24px] border border-sky-200 bg-[linear-gradient(180deg,rgba(239,246,255,0.95),rgba(224,242,254,0.84))] px-4 py-3 text-sm text-sky-950 shadow-[0_18px_30px_-28px_rgba(14,116,144,0.28)]">
+                <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-2xl bg-white/80 text-sky-700">
+                  <Sparkles className="size-4" />
+                </div>
+                <div>
+                  <p className="font-medium">Visão filtrada em foco</p>
+                  <p className="mt-1 leading-6 text-sky-900/80">Os filtros atuais ajudam a reduzir ruído e destacar o que exige tratativa mais rápida na carteira.</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+              {activeFilter !== "Todos" ? <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700 dark:text-slate-300">Status: {activeFilter}</Badge> : null}
               {assigneeFilter !== "Todos" ? (
-                <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700">
+                <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700 dark:text-slate-300">
                   Responsável: {assigneeFilter === "Sem responsável" ? "Sem responsável" : activeAssignees.find((assignee) => assignee.id === assigneeFilter)?.name ?? "Equipe"}
                 </Badge>
               ) : null}
               {criticalOnly ? <Badge variant="outline" className="border-amber-200 bg-amber-50/95 text-amber-800">Somente críticos</Badge> : null}
               {staleOnly ? <Badge variant="outline" className="border-rose-200 bg-rose-50/95 text-rose-700">Sem atualização</Badge> : null}
-              {osFilter !== "Todos" ? <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700">{osFilter}</Badge> : null}
-              {resolvedFilter !== "Todos" ? <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700">{resolvedFilter}</Badge> : null}
-              <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700">{density === "compact" ? "Compacto" : "Confortável"}</Badge>
+              {osFilter !== "Todos" ? <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700 dark:text-slate-300">{osFilter}</Badge> : null}
+              {resolvedFilter !== "Todos" ? <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700 dark:text-slate-300">{resolvedFilter}</Badge> : null}
+              <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700 dark:text-slate-300">{density === "compact" ? "Compacto" : "Confortável"}</Badge>
             </div>
+          </div>
           ) : null}
 
           <div className="mt-4 grid gap-2 sm:hidden">
@@ -714,18 +827,18 @@ export function ClientsTable() {
                       <div className="hidden grid-cols-[minmax(240px,1.2fr)_180px_90px_170px_160px_140px_120px_220px] items-start gap-4 lg:grid">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <button type="button" className="truncate text-left font-semibold text-slate-950 transition hover:text-slate-700" onClick={() => openTimeline(client)}>
+                            <button type="button" className="truncate text-left font-semibold text-slate-950 transition hover:text-slate-700 dark:text-slate-300" onClick={() => openTimeline(client)}>
                               {client.name}
                             </button>
                             {isCritical ? <Badge className="bg-amber-100 text-amber-900">Crítico</Badge> : null}
                             {isStale ? <Badge className="bg-rose-100 text-rose-900">Atrasado</Badge> : null}
                           </div>
-                          {client.description ? <p className="mt-1 line-clamp-2 text-sm text-slate-500">{client.description}</p> : null}
-                          <p className="mt-2 text-xs text-slate-400">Atualizado {formatDateLabel(client.updatedAt)}</p>
+                          {client.description ? <p className="mt-1 line-clamp-2 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">{client.description}</p> : null}
+                          <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">Atualizado {formatDateLabel(client.updatedAt)}</p>
                         </div>
 
                         <div className="space-y-2">
-                          <p className="font-medium text-slate-900">{formatPhone(client.phone)}</p>
+                          <p className="font-medium text-slate-900 dark:text-slate-100">{formatPhone(client.phone)}</p>
                           <div className="flex flex-wrap gap-2">
                             <Button variant="outline" size="sm" className="rounded-full px-3" onClick={() => handleCopyPhone(client)}>
                               <Copy className="size-3.5" />
@@ -739,7 +852,7 @@ export function ClientsTable() {
                         </div>
 
                         <div>
-                          <Badge variant="outline" className="rounded-full border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-700">
+                          <Badge variant="outline" className="rounded-full border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-700 dark:text-slate-300">
                             {client.totalServices}x
                           </Badge>
                         </div>
@@ -761,27 +874,27 @@ export function ClientsTable() {
                               </option>
                             ))}
                           </select>
-                          {rowBusy ? <p className="mt-2 text-xs font-medium text-slate-400">Salvando status...</p> : <p className="mt-2 text-xs text-slate-400">Alteração com confirmação</p>}
+                          {rowBusy ? <p className="mt-2 text-xs font-medium text-slate-400 dark:text-slate-500">Salvando status...</p> : <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">Alteração com confirmação</p>}
                         </div>
 
                         <div>
-                          <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                            <UserRound className="size-4 text-slate-400" />
+                          <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:text-slate-300">
+                            <UserRound className="size-4 text-slate-400 dark:text-slate-500" />
                             <span className="truncate">{client.assignee}</span>
                           </div>
                         </div>
 
                         <div>
-                          <div className={cn("rounded-xl border px-3 py-2 text-sm", client.nextActionAt ? "border-slate-200 bg-slate-50 text-slate-700" : "border-dashed border-slate-200 bg-white text-slate-400")}>
+                          <div className={cn("rounded-xl border px-3 py-2 text-sm", client.nextActionAt ? "border-slate-200 bg-slate-50 text-slate-700 dark:text-slate-300" : "border-dashed border-slate-200 bg-white text-slate-400 dark:text-slate-500")}>
                             {client.nextActionAt ? formatDateLabel(client.nextActionAt) : "Sem agenda"}
                           </div>
                         </div>
 
                         <div className="space-y-2">
-                          <Badge variant="outline" className="w-fit rounded-full border-slate-200 bg-white text-slate-700">
+                          <Badge variant="outline" className="w-fit rounded-full border-slate-200 bg-white text-slate-700 dark:text-slate-300">
                             {getOsLabel(client)}
                           </Badge>
-                          <p className="text-xs text-slate-400">Resolvido: {getResolvedLabel(client)}</p>
+                          <p className="text-xs text-slate-400 dark:text-slate-500">Resolvido: {getResolvedLabel(client)}</p>
                         </div>
 
                         <div className="flex flex-wrap gap-2">
@@ -804,28 +917,28 @@ export function ClientsTable() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <button type="button" className="text-left font-semibold text-slate-950 transition hover:text-slate-700" onClick={() => openTimeline(client)}>
+                              <button type="button" className="text-left font-semibold text-slate-950 transition hover:text-slate-700 dark:text-slate-300" onClick={() => openTimeline(client)}>
                                 {client.name}
                               </button>
                               {isCritical ? <Badge className="bg-amber-100 text-amber-900">Crítico</Badge> : null}
                               {isStale ? <Badge className="bg-rose-100 text-rose-900">Atrasado</Badge> : null}
                             </div>
-                            <p className="mt-1 text-sm text-slate-500">{formatPhone(client.phone)}</p>
-                            <p className="mt-2 text-xs text-slate-400">Atualizado {formatDateLabel(client.updatedAt)}</p>
+                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">{formatPhone(client.phone)}</p>
+                            <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">Atualizado {formatDateLabel(client.updatedAt)}</p>
                           </div>
-                          <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700">
+                          <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700 dark:text-slate-300">
                             {client.totalServices}x
                           </Badge>
                         </div>
 
                         <div className="grid gap-2 sm:grid-cols-2">
                           <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Responsável</p>
-                            <p className="mt-1 text-sm font-medium text-slate-900">{client.assignee}</p>
+                            <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Responsável</p>
+                            <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">{client.assignee}</p>
                           </div>
                           <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Próxima ação</p>
-                            <p className="mt-1 text-sm font-medium text-slate-900">{client.nextActionAt ? formatDateLabel(client.nextActionAt) : "Sem agenda"}</p>
+                            <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Próxima ação</p>
+                            <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">{client.nextActionAt ? formatDateLabel(client.nextActionAt) : "Sem agenda"}</p>
                           </div>
                         </div>
 
@@ -846,14 +959,14 @@ export function ClientsTable() {
                               </option>
                             ))}
                           </select>
-                          {rowBusy ? <p className="mt-2 text-xs font-medium text-slate-400">Salvando...</p> : <p className="mt-2 text-xs text-slate-400">Alteração com confirmação</p>}
+                          {rowBusy ? <p className="mt-2 text-xs font-medium text-slate-400 dark:text-slate-500">Salvando...</p> : <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">Alteração com confirmação</p>}
                         </div>
 
-                        {client.description ? <p className="text-sm leading-6 text-slate-500">{client.description}</p> : null}
+                        {client.description ? <p className="text-sm leading-6 text-slate-500 dark:text-slate-400 dark:text-slate-500">{client.description}</p> : null}
 
                         <div className="grid gap-2 sm:grid-cols-2">
-                          <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">O.S.: {getOsLabel(client)}</div>
-                          <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">Resolvido: {getResolvedLabel(client)}</div>
+                          <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">O.S.: {getOsLabel(client)}</div>
+                          <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">Resolvido: {getResolvedLabel(client)}</div>
                         </div>
 
                         <div className="grid gap-2 sm:grid-cols-2">
@@ -910,15 +1023,15 @@ export function ClientsTable() {
                 <AlertTriangle className="size-5" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-950">Confirmar alteração de status</h3>
-                <p className="mt-1 text-sm leading-6 text-slate-500">
+                <h3 className="text-lg font-semibold text-slate-950 dark:text-slate-50">Confirmar alteração de status</h3>
+                <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400 dark:text-slate-500">
                   O status será atualizado imediatamente e também vai entrar na timeline do cliente.
                 </p>
               </div>
             </div>
 
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              Novo status: <span className="font-semibold text-slate-900">{pendingStatusChange.nextStatus}</span>
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">
+              Novo status: <span className="font-semibold text-slate-900 dark:text-slate-100">{pendingStatusChange.nextStatus}</span>
             </div>
 
             <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

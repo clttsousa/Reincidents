@@ -41,7 +41,7 @@ export default async function ConfiguracoesPage() {
           return (
             <Card key={card.title}>
               <CardHeader>
-                <div className="mb-3 flex size-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+                <div className="mb-3 flex size-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700 dark:text-slate-300">
                   <Icon className="size-5" />
                 </div>
                 <CardTitle>{card.title}</CardTitle>

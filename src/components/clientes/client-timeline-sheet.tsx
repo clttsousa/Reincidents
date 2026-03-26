@@ -119,13 +119,13 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
           <div className="flex items-start justify-between gap-4">
             <div>
               <Badge className="bg-slate-950 text-white">Timeline do cliente</Badge>
-              <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-950">{client.name}</h2>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+              <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">{client.name}</h2>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
                 <span>{formatPhone(client.phone)}</span>
                 <span>•</span>
                 <span>{client.assignee}</span>
                 {client.nextActionAt ? (
-                  <Badge className={cn("border text-[11px] font-semibold", overdueNextAction ? "border-rose-200 bg-rose-50 text-rose-700" : "border-slate-200 bg-slate-50 text-slate-700")}>
+                  <Badge className={cn("border text-[11px] font-semibold", overdueNextAction ? "border-rose-200 bg-rose-50 text-rose-700" : "border-slate-200 bg-slate-50 text-slate-700 dark:text-slate-300")}>
                     Próxima ação {formatDateLabel(client.nextActionAt)}
                   </Badge>
                 ) : null}
@@ -141,12 +141,12 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
           <section className="surface-muted grid gap-4 rounded-[28px] p-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-[22px] border border-white bg-white px-4 py-3 shadow-[0_16px_28px_-24px_rgba(15,23,42,0.18)]">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Último contato</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{client.lastContactAt ? formatDateLabel(client.lastContactAt) : "Ainda não registrado"}</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Último contato</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{client.lastContactAt ? formatDateLabel(client.lastContactAt) : "Ainda não registrado"}</p>
               </div>
               <div className="rounded-[22px] border border-white bg-white px-4 py-3 shadow-[0_16px_28px_-24px_rgba(15,23,42,0.18)]">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Status atual</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{client.status}</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Status atual</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{client.status}</p>
               </div>
             </div>
           </section>
@@ -154,17 +154,17 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
           <section className="grid gap-4 lg:grid-cols-2">
             <div className="surface-card rounded-[26px] p-4">
               <div className="flex items-center gap-2">
-                <MessageSquarePlus className="size-4 text-slate-500" />
-                <h3 className="font-semibold text-slate-950">Adicionar observação</h3>
+                <MessageSquarePlus className="size-4 text-slate-500 dark:text-slate-400 dark:text-slate-500" />
+                <h3 className="font-semibold text-slate-950 dark:text-slate-50">Adicionar observação</h3>
               </div>
-              <p className="mt-1 text-sm text-slate-500">Use para registrar contexto, decisão ou algum detalhe interno importante.</p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">Use para registrar contexto, decisão ou algum detalhe interno importante.</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {["Cliente orientado", "Aguardando retorno", "Manter acompanhamento"].map((template) => (
                   <button
                     key={template}
                     type="button"
                     onClick={() => setNote((current) => (current ? `${current.trim()} · ${template}` : template))}
-                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:bg-slate-800/40"
                   >
                     {template}
                   </button>
@@ -179,10 +179,10 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
 
             <div className="surface-card rounded-[26px] p-4">
               <div className="flex items-center gap-2">
-                <PhoneOutgoing className="size-4 text-slate-500" />
-                <h3 className="font-semibold text-slate-950">Registrar tentativa de contato</h3>
+                <PhoneOutgoing className="size-4 text-slate-500 dark:text-slate-400 dark:text-slate-500" />
+                <h3 className="font-semibold text-slate-950 dark:text-slate-50">Registrar tentativa de contato</h3>
               </div>
-              <p className="mt-1 text-sm text-slate-500">Atualize o último contato e, se necessário, agende a próxima ação.</p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">Atualize o último contato e, se necessário, agende a próxima ação.</p>
               <Textarea value={contactNote} onChange={(event) => setContactNote(event.target.value)} className="mt-4 min-h-[96px]" placeholder="Resumo do retorno, sem retorno ou orientação passada ao cliente." />
               <div className="mt-3">
                 <label className="mb-2 block text-sm font-medium text-slate-800">Próxima ação</label>
@@ -198,8 +198,8 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
           <section className="space-y-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
-                <Clock3 className="size-4 text-slate-500" />
-                <h3 className="font-semibold text-slate-950">Histórico cronológico</h3>
+                <Clock3 className="size-4 text-slate-500 dark:text-slate-400 dark:text-slate-500" />
+                <h3 className="font-semibold text-slate-950 dark:text-slate-50">Histórico cronológico</h3>
               </div>
               <div className="flex flex-wrap gap-2 rounded-[20px] border border-slate-200 bg-white/90 p-1.5 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.16)]">
                 {([
@@ -213,7 +213,7 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
                     onClick={() => setFilter(value)}
                     className={cn(
                       "rounded-[16px] px-3 py-2 text-sm font-medium transition-all",
-                      filter === value ? "chip-active" : "chip-neutral hover:border-slate-300 hover:bg-slate-50",
+                      filter === value ? "chip-active" : "chip-neutral hover:border-slate-300 hover:bg-slate-50 dark:bg-slate-800/40",
                     )}
                   >
                     {label}
@@ -223,16 +223,16 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
             </div>
 
             {loading ? (
-              <div className="flex min-h-[220px] items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-slate-50/70">
-                <div className="flex items-center gap-3 text-sm font-medium text-slate-500">
+              <div className="flex min-h-[220px] items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-slate-50/70 dark:bg-slate-800/40">
+                <div className="flex items-center gap-3 text-sm font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">
                   <Loader2 className="size-4 animate-spin" />
                   Carregando timeline...
                 </div>
               </div>
             ) : groupedTimeline.length === 0 ? (
               <div className="rounded-[26px] border border-dashed border-slate-200 bg-slate-50/80 px-5 py-10 text-center">
-                <p className="font-medium text-slate-900">Nenhuma movimentação registrada ainda.</p>
-                <p className="mt-1 text-sm text-slate-500">As mudanças de status, notas e tentativas de contato vão aparecer aqui.</p>
+                <p className="font-medium text-slate-900 dark:text-slate-100">Nenhuma movimentação registrada ainda.</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">As mudanças de status, notas e tentativas de contato vão aparecer aqui.</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -247,10 +247,10 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
                           <Badge variant={entry.type === "note" ? "secondary" : "outline"} className="uppercase tracking-[0.14em]">
                             {timelineActionLabel(entry)}
                           </Badge>
-                          <p className="font-semibold text-slate-950">{entry.title}</p>
+                          <p className="font-semibold text-slate-950 dark:text-slate-50">{entry.title}</p>
                         </div>
-                        <p className="mt-2 text-sm leading-6 text-slate-600">{entry.description}</p>
-                        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-400">
+                        <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400 dark:text-slate-500">{entry.description}</p>
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-400 dark:text-slate-500">
                           <span>{entry.actorName}</span>
                           <span>•</span>
                           <span>{formatDateLabel(entry.createdAt)}</span>

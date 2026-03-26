@@ -105,8 +105,8 @@ export function RegisterForm() {
             <ShieldCheck className="size-4" />
           </div>
           <div>
-            <p className="font-medium text-slate-900">Cadastro com leitura mais guiada</p>
-            <p className="mt-1 text-sm text-slate-500">Os campos foram refinados para deixar senha, confirmação e qualidade do acesso mais claros.</p>
+            <p className="font-medium text-slate-900 dark:text-slate-100">Cadastro com leitura mais guiada</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">Os campos foram refinados para deixar senha, confirmação e qualidade do acesso mais claros.</p>
           </div>
         </div>
       </div>
@@ -114,14 +114,14 @@ export function RegisterForm() {
       <div className="space-y-2">
         <label className="text-sm font-medium text-slate-800">Nome</label>
         <div className="relative">
-          <User className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <User className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
           <Input autoComplete="name" placeholder="Seu nome completo" className="pl-11" value={values.name} onChange={(event) => setValues((current) => ({ ...current, name: event.target.value }))} />
         </div>
       </div>
       <div className="space-y-2">
         <label className="text-sm font-medium text-slate-800">E-mail</label>
         <div className="relative">
-          <Mail className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Mail className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
           <Input autoComplete="email" type="email" placeholder="voce@empresa.com" className="pl-11" value={values.email} onChange={(event) => setValues((current) => ({ ...current, email: event.target.value }))} />
         </div>
       </div>
@@ -129,14 +129,14 @@ export function RegisterForm() {
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-3">
             <label className="text-sm font-medium text-slate-800">Senha</label>
-            <span className="text-xs text-slate-400">Mín. 8 caracteres</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">Mín. 8 caracteres</span>
           </div>
           <div className="relative">
-            <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <Input autoComplete="new-password" type={showPassword ? "text" : "password"} placeholder="Mínimo de 8 caracteres" className="pl-11 pr-11" value={values.password} onChange={(event) => setValues((current) => ({ ...current, password: event.target.value }))} />
             <button
               type="button"
-              className="absolute right-3 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              className="absolute right-3 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300"
               onClick={() => setShowPassword((current) => !current)}
               aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
             >
@@ -147,11 +147,11 @@ export function RegisterForm() {
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-800">Confirmar senha</label>
           <div className="relative">
-            <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <Input autoComplete="new-password" type={showConfirmPassword ? "text" : "password"} placeholder="Repita a senha" className="pl-11 pr-11" value={values.confirmPassword} onChange={(event) => setValues((current) => ({ ...current, confirmPassword: event.target.value }))} />
             <button
               type="button"
-              className="absolute right-3 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              className="absolute right-3 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300"
               onClick={() => setShowConfirmPassword((current) => !current)}
               aria-label={showConfirmPassword ? "Ocultar confirmação de senha" : "Mostrar confirmação de senha"}
             >
@@ -163,13 +163,13 @@ export function RegisterForm() {
 
       <div className="rounded-[22px] border border-slate-200 bg-slate-50/85 px-4 py-3">
         <div className="flex items-center justify-between gap-3 text-sm">
-          <span className="font-medium text-slate-700">Força da senha</span>
-          <span className="text-slate-500">{values.password ? passwordStrength.label : "Preencha a senha"}</span>
+          <span className="font-medium text-slate-700 dark:text-slate-300">Força da senha</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">{values.password ? passwordStrength.label : "Preencha a senha"}</span>
         </div>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
           <div className={cn("h-full rounded-full transition-all duration-300", values.password ? passwordStrength.className : "bg-slate-300")} style={{ width: `${values.password ? passwordStrength.width : 0}%` }} />
         </div>
-        <p className="mt-2 text-xs text-slate-500">Combine letras maiúsculas, minúsculas, números e símbolos para um acesso mais forte.</p>
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">Combine letras maiúsculas, minúsculas, números e símbolos para um acesso mais forte.</p>
       </div>
 
       {error ? <p className="rounded-2xl border border-rose-200 bg-rose-50/95 px-4 py-3 text-sm text-rose-600">{error}</p> : null}
@@ -179,7 +179,7 @@ export function RegisterForm() {
         {loading ? "Criando conta..." : "Criar conta"}
       </Button>
 
-      <p className="text-center text-sm text-slate-500">
+      <p className="text-center text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
         Já possui acesso? {" "}
         <Link className="font-medium text-slate-900 underline underline-offset-4" href="/login">
           Entrar

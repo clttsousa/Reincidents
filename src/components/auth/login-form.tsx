@@ -69,8 +69,8 @@ export function LoginForm() {
             <Sparkles className="size-4" />
           </div>
           <div>
-            <p className="font-medium text-slate-900">Acesso rápido e mais claro</p>
-            <p className="mt-1 text-sm text-slate-500">Entrar no painel agora mostra feedbacks melhores, foco mais limpo e menos atrito no fluxo.</p>
+            <p className="font-medium text-slate-900 dark:text-slate-100">Acesso rápido e mais claro</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">Entrar no painel agora mostra feedbacks melhores, foco mais limpo e menos atrito no fluxo.</p>
           </div>
         </div>
       </div>
@@ -78,21 +78,21 @@ export function LoginForm() {
       <div className="space-y-2">
         <label className="text-sm font-medium text-slate-800">E-mail</label>
         <div className="relative">
-          <Mail className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Mail className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
           <Input autoComplete="email" type="email" placeholder="voce@empresa.com" className="pl-11" value={values.email} onChange={(event) => setValues((current) => ({ ...current, email: event.target.value }))} />
         </div>
       </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-3">
           <label className="text-sm font-medium text-slate-800">Senha</label>
-          <span className="text-xs text-slate-400">Mínimo de 8 caracteres</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500">Mínimo de 8 caracteres</span>
         </div>
         <div className="relative">
-          <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
           <Input autoComplete="current-password" type={showPassword ? "text" : "password"} placeholder="••••••••" className="pl-11 pr-11" value={values.password} onChange={(event) => setValues((current) => ({ ...current, password: event.target.value }))} />
           <button
             type="button"
-            className="absolute right-3 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+            className="absolute right-3 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300"
             onClick={() => setShowPassword((current) => !current)}
             aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
           >
@@ -109,7 +109,7 @@ export function LoginForm() {
         {loading ? "Entrando..." : "Entrar no painel"}
       </Button>
 
-      <div className="space-y-3 text-center text-sm text-slate-500">
+      <div className="space-y-3 text-center text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
         <p className="rounded-[20px] border border-slate-200/90 bg-slate-50/70 px-4 py-3">Esqueceu a senha? Ative a recuperação no Supabase Auth ou peça redefinição a um admin.</p>
         <p>
           Ainda não tem acesso? {" "}

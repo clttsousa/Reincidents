@@ -80,8 +80,8 @@ function EmptyState() {
       <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-white text-slate-500 shadow-sm">
         <Users className="size-6" />
       </div>
-      <h3 className="mt-4 text-base font-semibold text-slate-950">Nenhum usuário encontrado</h3>
-      <p className="mt-2 text-sm text-slate-500">
+      <h3 className="mt-4 text-base font-semibold text-slate-950 dark:text-slate-50">Nenhum usuário encontrado</h3>
+      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
         Ajuste a busca ou os filtros. Os usuários continuam sendo criados pelo fluxo de registro do sistema.
       </p>
     </div>
@@ -111,7 +111,7 @@ function SummaryCard({
         <div
           className={cn(
             "flex size-11 items-center justify-center rounded-2xl border",
-            tone === "default" && "border-slate-200 bg-slate-50 text-slate-700",
+            tone === "default" && "border-slate-200 bg-slate-50 text-slate-700 dark:text-slate-300",
             tone === "success" && "border-emerald-200 bg-emerald-50 text-emerald-700",
             tone === "warning" && "border-amber-200 bg-amber-50 text-amber-700",
           )}
@@ -120,7 +120,7 @@ function SummaryCard({
         </div>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-slate-500">{description}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">{description}</p>
       </CardContent>
     </Card>
   );
@@ -364,7 +364,7 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
       <section className="surface-card section-shell space-y-4 sm:space-y-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 dark:text-slate-500">
               Gestão de usuários
             </div>
             <h2 className="text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">Equipe, cargos e status de acesso</h2>
@@ -383,7 +383,7 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
 
         <div className="grid gap-3 rounded-[22px] border border-slate-200 bg-slate-50 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_180px_170px_auto] xl:items-center">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <Input value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" placeholder="Buscar por nome ou e-mail" />
           </div>
 
@@ -404,8 +404,8 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
             ))}
           </select>
 
-          <div className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600">
-            <Filter className="size-4 text-slate-400" />
+          <div className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600 dark:text-slate-400 dark:text-slate-500">
+            <Filter className="size-4 text-slate-400 dark:text-slate-500" />
             {filteredProfiles.length} encontrado(s)
           </div>
         </div>
@@ -416,7 +416,7 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
         {loading ? (
           <div className="grid gap-4 lg:grid-cols-2">
             {Array.from({ length: 4 }).map((_, index) => (
-              <Card key={index} className="h-[240px] animate-pulse bg-slate-50/70" />
+              <Card key={index} className="h-[240px] animate-pulse bg-slate-50/70 dark:bg-slate-800/40" />
             ))}
           </div>
         ) : filteredProfiles.length === 0 ? (
@@ -424,7 +424,7 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
         ) : (
           <>
             <div className="hidden overflow-hidden rounded-[24px] border border-slate-200 lg:block">
-              <div className="grid grid-cols-[minmax(220px,1.2fr)_140px_140px_150px_150px_170px] gap-4 border-b border-slate-200 bg-slate-50 px-6 py-4 text-sm font-medium text-slate-500">
+              <div className="grid grid-cols-[minmax(220px,1.2fr)_140px_140px_150px_150px_170px] gap-4 border-b border-slate-200 bg-slate-50 px-6 py-4 text-sm font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">
                 <span>Usuário</span>
                 <span>Cargo</span>
                 <span>Status</span>
@@ -432,7 +432,7 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
                 <span>Último acesso</span>
                 <span>Ações</span>
               </div>
-              <div className="divide-y divide-slate-200 bg-white">
+              <div className="divide-y divide-slate-200 bg-white dark:bg-slate-800/60">
                 {filteredProfiles.map((profile) => {
                   const isSelf = profile.id === currentUserId;
                   const rowBusy = savingUserId === profile.id;
@@ -442,10 +442,10 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
                     <div key={profile.id} className="grid grid-cols-[minmax(220px,1.2fr)_140px_140px_150px_150px_170px] gap-4 px-6 py-5">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="truncate font-medium text-slate-950">{profile.full_name || "Usuário sem nome"}</p>
-                          {isSelf ? <Badge className="border-slate-200 bg-slate-100 text-slate-700">Você</Badge> : null}
+                          <p className="truncate font-medium text-slate-950 dark:text-slate-50">{profile.full_name || "Usuário sem nome"}</p>
+                          {isSelf ? <Badge className="border-slate-200 bg-slate-100 text-slate-700 dark:text-slate-300">Você</Badge> : null}
                         </div>
-                        <p className="mt-1 truncate text-sm text-slate-500">{profile.email ?? "Sem e-mail"}</p>
+                        <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">{profile.email ?? "Sem e-mail"}</p>
                         {!profile.is_active && profile.disabled_reason ? <p className="mt-2 text-xs text-rose-600">Motivo: {profile.disabled_reason}</p> : null}
                       </div>
 
@@ -459,7 +459,7 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
                             setActionReason("");
                             setPendingAction({ type: "role", user: profile, nextRole });
                           }}
-                          className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium outline-none focus-visible:ring-4 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                          className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium outline-none focus-visible:ring-4 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 dark:text-slate-500"
                         >
                           {roleOptions.map((role) => (
                             <option key={role} value={role}>
@@ -473,8 +473,8 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
                         <Badge className={cn("border", statusBadgeClassnames[statusLabel])}>{statusLabel}</Badge>
                       </div>
 
-                      <div className="text-sm text-slate-600">{formatDate(profile.created_at)}</div>
-                      <div className="text-sm text-slate-600">{formatLastLogin(profile.last_login_at)}</div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">{formatDate(profile.created_at)}</div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">{formatLastLogin(profile.last_login_at)}</div>
 
                       <div>
                         <Button
@@ -512,10 +512,10 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="truncate font-medium text-slate-950">{profile.full_name || "Usuário sem nome"}</p>
-                            {isSelf ? <Badge className="border-slate-200 bg-slate-100 text-slate-700">Você</Badge> : null}
+                            <p className="truncate font-medium text-slate-950 dark:text-slate-50">{profile.full_name || "Usuário sem nome"}</p>
+                            {isSelf ? <Badge className="border-slate-200 bg-slate-100 text-slate-700 dark:text-slate-300">Você</Badge> : null}
                           </div>
-                          <p className="mt-1 break-all text-sm text-slate-500">{profile.email ?? "Sem e-mail"}</p>
+                          <p className="mt-1 break-all text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">{profile.email ?? "Sem e-mail"}</p>
                           {!profile.is_active && profile.disabled_reason ? <p className="mt-2 text-xs text-rose-600">Motivo: {profile.disabled_reason}</p> : null}
                         </div>
                         <Badge className={cn("border", statusBadgeClassnames[statusLabel])}>{statusLabel}</Badge>
@@ -523,7 +523,7 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
 
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div>
-                          <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-400">Cargo</p>
+                          <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">Cargo</p>
                           <select
                             value={profile.role}
                             disabled={rowBusy || isSelf}
@@ -533,7 +533,7 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
                               setActionReason("");
                               setPendingAction({ type: "role", user: profile, nextRole });
                             }}
-                            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium outline-none focus-visible:ring-4 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium outline-none focus-visible:ring-4 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 dark:text-slate-500"
                           >
                             {roleOptions.map((role) => (
                               <option key={role} value={role}>
@@ -543,19 +543,19 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
                           </select>
                         </div>
                         <div>
-                          <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-400">Criado em</p>
-                          <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-600">{formatDate(profile.created_at)}</div>
+                          <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">Criado em</p>
+                          <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">{formatDate(profile.created_at)}</div>
                         </div>
                       </div>
 
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div>
-                          <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-400">Último acesso</p>
-                          <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-600">{formatLastLogin(profile.last_login_at)}</div>
+                          <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">Último acesso</p>
+                          <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">{formatLastLogin(profile.last_login_at)}</div>
                         </div>
                         <div>
-                          <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-400">Status</p>
-                          <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-600">{statusLabel}</div>
+                          <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">Status</p>
+                          <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">{statusLabel}</div>
                         </div>
                       </div>
 
@@ -592,27 +592,27 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
           </CardHeader>
           <CardContent className="space-y-3 p-4 pt-0 sm:p-6 sm:pt-0">
             {auditLoading ? (
-              <div className="flex min-h-[180px] items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-slate-50/70">
-                <div className="flex items-center gap-3 text-sm font-medium text-slate-500">
+              <div className="flex min-h-[180px] items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-slate-50/70 dark:bg-slate-800/40">
+                <div className="flex items-center gap-3 text-sm font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">
                   <Loader2 className="size-4 animate-spin" />
                   Carregando trilha administrativa...
                 </div>
               </div>
             ) : auditLogs.length === 0 ? (
               <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50/80 px-5 py-10 text-center">
-                <p className="font-medium text-slate-900">Nenhuma ação administrativa registrada ainda.</p>
-                <p className="mt-1 text-sm text-slate-500">As mudanças de cargo e ativação vão aparecer aqui automaticamente.</p>
+                <p className="font-medium text-slate-900 dark:text-slate-100">Nenhuma ação administrativa registrada ainda.</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">As mudanças de cargo e ativação vão aparecer aqui automaticamente.</p>
               </div>
             ) : (
               auditLogs.map((log) => (
                 <div key={log.id} className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">
+                    <Badge variant="outline" className="border-slate-200 bg-white text-slate-700 dark:text-slate-300">
                       {log.action === "role_changed" ? "Cargo" : log.action === "user_activated" ? "Reativação" : "Desativação"}
                     </Badge>
-                    <p className="text-sm font-medium text-slate-950">{getAuditDescription(log)}</p>
+                    <p className="text-sm font-medium text-slate-950 dark:text-slate-50">{getAuditDescription(log)}</p>
                   </div>
-                  <p className="mt-2 text-xs text-slate-400">{formatDate(log.created_at)}</p>
+                  <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">{formatDate(log.created_at)}</p>
                 </div>
               ))
             )}
@@ -626,16 +626,16 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
           </CardHeader>
           <CardContent className="space-y-3 p-4 pt-0 text-sm text-slate-600 sm:p-6 sm:pt-0">
             <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-              <p className="font-medium text-slate-900">{metrics.inactive} conta(s) inativa(s)</p>
-              <p className="mt-1 text-slate-500">Use este número para revisar contas desligadas ou acesso temporariamente suspenso.</p>
+              <p className="font-medium text-slate-900 dark:text-slate-100">{metrics.inactive} conta(s) inativa(s)</p>
+              <p className="mt-1 text-slate-500 dark:text-slate-400 dark:text-slate-500">Use este número para revisar contas desligadas ou acesso temporariamente suspenso.</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-              <p className="font-medium text-slate-900">{metrics.admins} admin(s)</p>
-              <p className="mt-1 text-slate-500">A função v4.0 impede desativar ou rebaixar o último admin ativo.</p>
+              <p className="font-medium text-slate-900 dark:text-slate-100">{metrics.admins} admin(s)</p>
+              <p className="mt-1 text-slate-500 dark:text-slate-400 dark:text-slate-500">A função v4.0 impede desativar ou rebaixar o último admin ativo.</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-              <p className="font-medium text-slate-900">{filteredProfiles.length} usuário(s) no filtro atual</p>
-              <p className="mt-1 text-slate-500">Combine busca, cargo e status para encontrar a pessoa certa mais rápido.</p>
+              <p className="font-medium text-slate-900 dark:text-slate-100">{filteredProfiles.length} usuário(s) no filtro atual</p>
+              <p className="mt-1 text-slate-500 dark:text-slate-400 dark:text-slate-500">Combine busca, cargo e status para encontrar a pessoa certa mais rápido.</p>
             </div>
           </CardContent>
         </Card>
@@ -645,12 +645,12 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-3 backdrop-blur-sm sm:items-center sm:p-4">
           <div className="w-full max-w-lg rounded-[28px] border border-white/80 bg-white p-5 shadow-2xl sm:p-6">
             <div className="flex items-start gap-3">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 dark:text-slate-300">
                 <AlertTriangle className="size-5" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-950">Confirmar alteração</h3>
-                <p className="mt-1 text-sm leading-6 text-slate-500">
+                <h3 className="text-lg font-semibold text-slate-950 dark:text-slate-50">Confirmar alteração</h3>
+                <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400 dark:text-slate-500">
                   {pendingAction.type === "role"
                     ? `Alterar o cargo de ${pendingAction.user.full_name ?? pendingAction.user.email ?? "usuário"} para ${roleLabels[pendingAction.nextRole]}?`
                     : pendingAction.nextActive
@@ -660,7 +660,7 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
               </div>
             </div>
 
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">
               Quando a migração v4.0 estiver aplicada, a mudança passa por uma função segura no banco e já registra a trilha administrativa automaticamente.
             </div>
 

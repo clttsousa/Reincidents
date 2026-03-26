@@ -19,8 +19,8 @@ export default function LoginPage() {
           <BrandLogo className="mb-8" />
           <div className="max-w-xl">
             <p className="section-heading">RecorrenciaOS</p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">Controle operacional mais bonito, claro e rápido de usar.</h1>
-            <p className="mt-4 text-base leading-7 text-slate-500">A nova experiência visual melhora a leitura da operação, o ritmo de acompanhamento e a sensação de produto premium.</p>
+            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">Controle operacional mais bonito, claro e rápido de usar.</h1>
+            <p className="mt-4 text-base leading-7 text-slate-500 dark:text-slate-400 dark:text-slate-500">A nova experiência visual melhora a leitura da operação, o ritmo de acompanhamento e a sensação de produto premium.</p>
           </div>
           <div className="mt-8 grid gap-4">
             {highlights.map((item) => {
@@ -32,8 +32,8 @@ export default function LoginPage() {
                       <Icon className="size-5" />
                     </div>
                     <div>
-                      <p className="font-medium text-slate-950">{item.title}</p>
-                      <p className="mt-1 text-sm leading-6 text-slate-500">{item.description}</p>
+                      <p className="font-medium text-slate-950 dark:text-slate-50">{item.title}</p>
+                      <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400 dark:text-slate-500">{item.description}</p>
                     </div>
                   </div>
                 </div>

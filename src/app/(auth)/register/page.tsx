@@ -19,8 +19,8 @@ export default function RegisterPage() {
           <BrandLogo className="mb-8" />
           <div className="max-w-xl">
             <p className="section-heading">Novo acesso</p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">Crie a conta com mais clareza e mantenha a governança da operação.</h1>
-            <p className="mt-4 text-base leading-7 text-slate-500">O fluxo de cadastro agora conversa melhor com o visual novo do sistema, deixando a experiência mais premium desde a primeira tela.</p>
+            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">Crie a conta com mais clareza e mantenha a governança da operação.</h1>
+            <p className="mt-4 text-base leading-7 text-slate-500 dark:text-slate-400 dark:text-slate-500">O fluxo de cadastro agora conversa melhor com o visual novo do sistema, deixando a experiência mais premium desde a primeira tela.</p>
           </div>
           <div className="mt-8 grid gap-4">
             {highlights.map((item) => {
@@ -32,8 +32,8 @@ export default function RegisterPage() {
                       <Icon className="size-5" />
                     </div>
                     <div>
-                      <p className="font-medium text-slate-950">{item.title}</p>
-                      <p className="mt-1 text-sm leading-6 text-slate-500">{item.description}</p>
+                      <p className="font-medium text-slate-950 dark:text-slate-50">{item.title}</p>
+                      <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400 dark:text-slate-500">{item.description}</p>
                     </div>
                   </div>
                 </div>
