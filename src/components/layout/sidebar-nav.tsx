@@ -21,22 +21,22 @@ export function SidebarNav({ items }: { items: NavigationItem[] }) {
             key={item.href}
             href={item.href}
             className={cn(
-              "group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200",
+              "group flex items-center gap-3 rounded-[22px] px-4 py-3.5 text-sm font-medium transition-all duration-200",
               active
-                ? "bg-white text-slate-950 shadow-[0_16px_35px_-24px_rgba(148,163,184,0.55)]"
+                ? "bg-white text-slate-950 shadow-[0_24px_42px_-30px_rgba(148,163,184,0.72)]"
                 : "text-slate-300/90 hover:bg-white/10 hover:text-white",
             )}
           >
             <span
               className={cn(
-                "flex size-9 items-center justify-center rounded-xl border text-inherit transition-all",
-                active ? "border-slate-200 bg-slate-100 text-slate-900" : "border-white/10 bg-white/5 text-slate-300 group-hover:border-white/20",
+                "flex size-10 items-center justify-center rounded-2xl border text-inherit transition-all",
+                active ? "border-slate-200 bg-slate-100 text-slate-900 shadow-[0_10px_24px_-20px_rgba(15,23,42,0.18)]" : "border-white/10 bg-white/5 text-slate-300 group-hover:border-white/20",
               )}
             >
               <Icon className="size-4" />
             </span>
             <span className="flex-1">{item.label}</span>
-            {active ? <span className="size-2 rounded-full bg-slate-950" /> : null}
+            {active ? <span className="size-2 rounded-full bg-emerald-500" /> : null}
           </Link>
         );
       })}

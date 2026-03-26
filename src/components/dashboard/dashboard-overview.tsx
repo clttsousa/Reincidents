@@ -23,7 +23,7 @@ import { formatDateLabel, formatPhone, hasOpenOs, statusStyles } from "@/lib/cli
 import { buildDashboardInsights, type DashboardPeriod } from "@/lib/services/dashboard-service";
 import { cn } from "@/lib/utils";
 
-const PERIOD_STORAGE_KEY = "recorrenciaos-dashboard-period-v43";
+const PERIOD_STORAGE_KEY = "recorrenciaos-dashboard-period-v46";
 
 const periodOptions: Array<{ label: string; value: DashboardPeriod }> = [
   { label: "7 dias", value: 7 },
@@ -42,6 +42,32 @@ type DashboardCard = {
   trend?: { delta: number; percentage: number; direction: "up" | "down" | "neutral" };
 };
 
+function useAnimatedNumber(value: number) {
+  const [displayValue, setDisplayValue] = useState(value);
+
+  useEffect(() => {
+    let frame = 0;
+    const startValue = displayValue;
+    const diff = value - startValue;
+    if (diff === 0) return;
+    const duration = 360;
+    const startTime = performance.now();
+
+    const loop = (time: number) => {
+      const progress = Math.min((time - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(Math.round(startValue + diff * eased));
+      if (progress < 1) frame = requestAnimationFrame(loop);
+    };
+
+    frame = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  return displayValue;
+}
+
 function DashboardSkeleton() {
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -50,19 +76,19 @@ function DashboardSkeleton() {
           <div
             key={index}
             className={cn(
-              "h-[104px] animate-pulse rounded-[24px] border border-slate-200 bg-white/70",
+              "skeleton-shimmer h-[120px] rounded-[28px] border border-slate-200 bg-white/75",
               index === 0 ? "col-span-2 xl:col-span-1" : "col-span-1",
             )}
           />
         ))}
       </div>
-      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="h-[360px] animate-pulse rounded-[24px] border border-slate-200 bg-white/70" />
-        <div className="h-[360px] animate-pulse rounded-[24px] border border-slate-200 bg-white/70" />
+      <div className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
+        <div className="skeleton-shimmer h-[380px] rounded-[28px] border border-slate-200 bg-white/75" />
+        <div className="skeleton-shimmer h-[380px] rounded-[28px] border border-slate-200 bg-white/75" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="h-[300px] animate-pulse rounded-[24px] border border-slate-200 bg-white/70" />
-        <div className="h-[300px] animate-pulse rounded-[24px] border border-slate-200 bg-white/70" />
+        <div className="skeleton-shimmer h-[320px] rounded-[28px] border border-slate-200 bg-white/75" />
+        <div className="skeleton-shimmer h-[320px] rounded-[28px] border border-slate-200 bg-white/75" />
       </div>
     </div>
   );
@@ -93,12 +119,10 @@ function StatusBar({ label, value, total }: { label: string; value: number; tota
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-3 text-sm">
         <span className="text-slate-600">{label}</span>
-        <span className="font-medium text-slate-900">
-          {value} · {percentage}%
-        </span>
+        <span className="font-medium text-slate-900">{value} · {percentage}%</span>
       </div>
       <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
-        <div className="h-full rounded-full bg-slate-900 transition-all" style={{ width: `${percentage}%` }} />
+        <div className="h-full rounded-full bg-[linear-gradient(90deg,#0f172a,#334155)] transition-all duration-300" style={{ width: `${percentage}%` }} />
       </div>
     </div>
   );
@@ -114,9 +138,50 @@ function ProductivityBar({ label, value, total }: { label: string; value: number
         <span className="font-medium text-slate-900">{value}</span>
       </div>
       <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
-        <div className="h-full rounded-full bg-slate-900 transition-all" style={{ width: `${width}%` }} />
+        <div className="h-full rounded-full bg-[linear-gradient(90deg,#0f172a,#334155)] transition-all duration-300" style={{ width: `${width}%` }} />
       </div>
     </div>
+  );
+}
+
+function DashboardMetricCard({ card }: { card: DashboardCard }) {
+  const Icon = card.icon;
+  const animatedValue = useAnimatedNumber(card.value);
+
+  return (
+    <Link href={card.href} className="group block h-full">
+      <Card className="h-full overflow-hidden rounded-[28px] border border-slate-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.96))] p-0 hover-glow">
+        <CardContent className="relative flex h-full flex-col justify-between gap-4 p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-400">{card.label}</p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{animatedValue}</p>
+            </div>
+            <div
+              className={cn(
+                "flex size-12 shrink-0 items-center justify-center rounded-[18px] border text-slate-700 shadow-[0_16px_32px_-24px_rgba(15,23,42,0.22)]",
+                card.emphasis === "warning" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-200 bg-white text-slate-700",
+                card.emphasis === "success" && "border-emerald-200 bg-emerald-50 text-emerald-800",
+              )}
+            >
+              <Icon className="size-5" />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              {card.trend ? <TrendPill {...card.trend} /> : <Badge variant="secondary">Acompanhar</Badge>}
+            </div>
+            <p className="mt-3 text-sm leading-6 text-slate-500">{card.helper}</p>
+            <div className="mt-4 flex items-center gap-2 text-sm font-medium text-slate-700 transition group-hover:text-slate-950">
+              Abrir visão
+              <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
+            </div>
+          </div>
+          <div className="absolute inset-x-5 top-0 h-1 rounded-full bg-[linear-gradient(90deg,rgba(15,23,42,0.85),rgba(99,102,241,0.5),transparent)]" />
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 
@@ -146,12 +211,12 @@ export function DashboardOverview() {
   if (loading) return <DashboardSkeleton />;
 
   const cards: DashboardCard[] = [
-    { key: "total", label: "Total", value: stats.total, helper: "Carteira completa", href: "/clientes", icon: PhoneCall },
+    { key: "total", label: "Carteira total", value: stats.total, helper: "Base completa acompanhada pela equipe.", href: "/clientes", icon: PhoneCall },
     {
       key: "waiting",
       label: "Aguardando contato",
       value: stats.waiting,
-      helper: `${insights.overdue} com ação vencida`,
+      helper: `${insights.overdue} com ação vencida agora.`,
       href: "/clientes?view=waiting",
       icon: Clock3,
       emphasis: "warning",
@@ -160,7 +225,7 @@ export function DashboardOverview() {
       key: "os",
       label: "O.S. abertas",
       value: stats.os,
-      helper: `${insights.workloadOpen} casos ainda pendentes`,
+      helper: `${insights.workloadOpen} casos ainda pendentes na carteira.`,
       href: "/clientes?view=os",
       icon: FileText,
     },
@@ -168,7 +233,7 @@ export function DashboardOverview() {
       key: "solved",
       label: "Resolvidos",
       value: stats.solved,
-      helper: `${insights.solved.current} no período`,
+      helper: `${insights.solved.current} fechados no período selecionado.`,
       href: "/clientes?view=resolved",
       icon: CheckCircle2,
       emphasis: "success",
@@ -178,7 +243,7 @@ export function DashboardOverview() {
       key: "noReturn",
       label: "Sem retorno",
       value: stats.noReturn,
-      helper: "Dependem de nova estratégia",
+      helper: "Casos que pedem nova abordagem de contato.",
       href: "/clientes?view=no-return",
       icon: AlertTriangle,
       emphasis: "warning",
@@ -187,7 +252,7 @@ export function DashboardOverview() {
       key: "critical",
       label: "Críticos",
       value: stats.critical,
-      helper: `${insights.criticalNow} pressionando a operação`,
+      helper: `${insights.criticalNow} pressionando a operação agora.`,
       href: "/clientes?view=critical",
       icon: Sparkles,
       emphasis: "warning",
@@ -196,7 +261,7 @@ export function DashboardOverview() {
       key: "updated",
       label: "Atualizados",
       value: insights.updated.current,
-      helper: `últimos ${period} dias`,
+      helper: `Movimentados nos últimos ${period} dias.`,
       href: "/clientes",
       icon: TrendingUp,
       trend: insights.updated,
@@ -205,7 +270,7 @@ export function DashboardOverview() {
       key: "unassigned",
       label: "Sem responsável",
       value: insights.unassigned,
-      helper: `${insights.dueSoon} com ação nas próximas 48h`,
+      helper: `${insights.dueSoon} com ação nas próximas 48h.`,
       href: "/clientes?view=unassigned",
       icon: Users,
     },
@@ -215,108 +280,76 @@ export function DashboardOverview() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <section className="surface-card section-shell space-y-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <Badge variant="secondary" className="w-fit bg-slate-100 text-slate-700">
-              Gestão operacional
-            </Badge>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Dashboard gerencial</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 sm:text-base">
-              Compare períodos, acompanhe gargalos da carteira e veja quem mais está absorvendo volume crítico sem sair da operação.
-            </p>
+      <section className="surface-card section-shell animate-enter space-y-5">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="section-heading">Visão executiva</p>
+            <h1 className="mt-3 page-title">Pulso da operação em uma leitura mais premium</h1>
+            <p className="page-description">Veja ritmo de atualização, gargalos, saúde do SLA e clientes críticos com uma hierarquia visual melhor e menos ruído.</p>
           </div>
-          <div className="inline-flex flex-wrap rounded-2xl border border-slate-200 bg-white p-1">
-            {periodOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setPeriod(option.value)}
-                className={cn(
-                  "rounded-xl px-4 py-2 text-sm font-medium transition",
-                  option.value === period ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-slate-50",
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
+          <div className="flex flex-wrap gap-2 rounded-[24px] border border-slate-200/90 bg-white/90 p-1.5 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.18)]">
+            {periodOptions.map((option) => {
+              const active = period === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setPeriod(option.value)}
+                  className={cn(
+                    "min-w-[94px] rounded-[18px] px-4 py-2.5 text-sm font-medium transition-all",
+                    active ? "chip-active" : "chip-neutral hover:border-slate-300 hover:bg-slate-50",
+                  )}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
           </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          {cards.map((card) => (
+            <DashboardMetricCard key={card.key} card={card} />
+          ))}
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        {cards.map((card, index) => {
-          const Icon = card.icon;
-          return (
-            <Link key={card.key} href={card.href}>
-              <Card
-                className={cn(
-                  "hover-lift h-full",
-                  index === 0 ? "col-span-2 xl:col-span-1" : "col-span-1",
-                  card.emphasis === "warning" && "border-amber-200/80",
-                  card.emphasis === "success" && "border-emerald-200/80",
-                )}
-              >
-                <CardContent className="flex items-center justify-between gap-3 p-4 sm:p-5">
-                  <div className="min-w-0">
-                    <p className="text-xs leading-5 text-slate-500 sm:text-sm">{card.label}</p>
-                    <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">{card.value}</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <p className="text-xs text-slate-400">{card.helper}</p>
-                      {card.trend ? <TrendPill {...card.trend} /> : null}
-                    </div>
-                  </div>
-                  <div
-                    className={cn(
-                      "flex size-10 shrink-0 items-center justify-center rounded-2xl border text-slate-700",
-                      card.emphasis === "warning" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-100",
-                      card.emphasis === "success" && "border-emerald-200 bg-emerald-50 text-emerald-800",
-                    )}
-                  >
-                    <Icon className="size-5" />
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+      <section className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
         <Card>
-          <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
+          <CardHeader className="p-5 pb-4 sm:p-6 sm:pb-4">
             <CardTitle>Pulso da operação</CardTitle>
-            <CardDescription>
-              Resumo do período selecionado com foco em ritmo de atualização, taxa de fechamento e saúde do SLA.
-            </CardDescription>
+            <CardDescription>Resumo do período com foco em ritmo de atualização, taxa de fechamento e equilíbrio do volume aberto.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
+          <CardContent className="space-y-5 p-5 pt-0 sm:p-6 sm:pt-0">
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <div className="surface-muted rounded-[24px] p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Atualizados</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-950">{insights.updated.current}</p>
                 <p className="mt-1 text-sm text-slate-500">Movimentados nos últimos {period} dias.</p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <div className="surface-muted rounded-[24px] p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Fechamento</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-950">{insights.throughputRate}%</p>
                 <p className="mt-1 text-sm text-slate-500">Proporção entre atualizados e resolvidos.</p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <div className="surface-muted rounded-[24px] p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Carga aberta</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-950">{insights.workloadOpen}</p>
-                <p className="mt-1 text-sm text-slate-500">Clientes ainda pendentes na carteira.</p>
+                <p className="mt-1 text-sm text-slate-500">Casos ainda ativos na operação.</p>
               </div>
             </div>
 
-            <div className="space-y-3 rounded-[24px] border border-slate-200 bg-white p-4">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="size-4 text-slate-500" />
-                <p className="font-medium text-slate-950">Distribuição por status</p>
+            <div className="space-y-3 rounded-[26px] border border-slate-200 bg-slate-50/70 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium text-slate-950">Distribuição por status</p>
+                  <p className="mt-1 text-sm text-slate-500">Composição atual da carteira para entender rapidamente onde está o volume.</p>
+                </div>
+                <Badge variant="outline">Base atual</Badge>
               </div>
               <div className="space-y-3">
                 {insights.statusBreakdown.map((item) => (
-                  <StatusBar key={item.label} {...item} />
+                  <StatusBar key={item.label} label={item.label} value={item.value} total={item.total} />
                 ))}
               </div>
             </div>
@@ -324,17 +357,17 @@ export function DashboardOverview() {
         </Card>
 
         <Card>
-          <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
+          <CardHeader className="p-5 pb-4 sm:p-6 sm:pb-4">
             <CardTitle>SLA e gargalos</CardTitle>
-            <CardDescription>O que merece prioridade agora e onde a operação tende a travar primeiro.</CardDescription>
+            <CardDescription>O que merece atenção agora e onde a operação tende a travar primeiro.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
+          <CardContent className="space-y-4 p-5 pt-0 sm:p-6 sm:pt-0">
             <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
               {insights.sla.map((item) => (
                 <div
                   key={item.label}
                   className={cn(
-                    "rounded-2xl border p-4",
+                    "rounded-[24px] border p-4 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.18)]",
                     item.tone === "danger" && "border-rose-200 bg-rose-50 text-rose-900",
                     item.tone === "warning" && "border-amber-200 bg-amber-50 text-amber-900",
                     item.tone === "success" && "border-emerald-200 bg-emerald-50 text-emerald-900",
@@ -346,14 +379,14 @@ export function DashboardOverview() {
               ))}
             </div>
 
-            <div className="space-y-3 rounded-[24px] border border-slate-200 bg-white p-4">
+            <div className="space-y-3 rounded-[26px] border border-slate-200 bg-white p-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="font-medium text-slate-950">Gargalos atuais</p>
                 <Badge variant="outline">Top 3</Badge>
               </div>
               <div className="space-y-3">
                 {insights.bottlenecks.map((item) => (
-                  <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                  <div key={item.label} className="surface-muted rounded-[24px] p-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="font-medium text-slate-950">{item.label}</p>
                       <span className="text-sm font-semibold text-slate-950">{item.value}</span>
@@ -369,24 +402,20 @@ export function DashboardOverview() {
 
       <section className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
+          <CardHeader className="p-5 pb-4 sm:p-6 sm:pb-4">
             <CardTitle>Produtividade por responsável</CardTitle>
             <CardDescription>Ranking baseado em clientes tocados no período, resolvidos e carga crítica atual.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
+          <CardContent className="space-y-4 p-5 pt-0 sm:p-6 sm:pt-0">
             {insights.productivity.length === 0 ? (
-              <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
-                Ainda não há movimentações suficientes no período para montar o ranking.
-              </div>
+              <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">Ainda não há movimentações suficientes no período para montar o ranking.</div>
             ) : (
               insights.productivity.map((item) => (
-                <div key={item.name} className="rounded-[24px] border border-slate-200 bg-white p-4">
+                <div key={item.name} className="surface-muted rounded-[26px] p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-medium text-slate-950">{item.name}</p>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {item.solved} resolvidos · {item.critical} críticos em carteira
-                      </p>
+                      <p className="mt-1 text-sm text-slate-500">{item.solved} resolvidos · {item.critical} críticos em carteira</p>
                     </div>
                     <Badge variant="outline">{item.touched} tocados</Badge>
                   </div>
@@ -400,18 +429,18 @@ export function DashboardOverview() {
         </Card>
 
         <Card>
-          <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
+          <CardHeader className="p-5 pb-4 sm:p-6 sm:pb-4">
             <CardTitle>Recorrência e pressão operacional</CardTitle>
             <CardDescription>Clientes que mais voltam ou que continuam puxando o volume crítico da operação.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 p-4 pt-0 sm:p-6 sm:pt-0">
-            <div className="space-y-3 rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
+          <CardContent className="grid gap-4 p-5 pt-0 sm:p-6 sm:pt-0">
+            <div className="space-y-3 rounded-[26px] border border-slate-200 bg-slate-50/70 p-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="font-medium text-slate-950">Top recorrência</p>
                 <Badge variant="outline">{insights.recurring.length}</Badge>
               </div>
               {insights.recurring.map((client) => (
-                <Link key={client.id} href="/clientes?sort=services" className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm hover:bg-slate-50">
+                <Link key={client.id} href="/clientes?sort=services" className="surface-card hover-lift flex items-center justify-between gap-3 rounded-[22px] px-3 py-3 text-sm">
                   <div className="min-w-0">
                     <p className="truncate font-medium text-slate-950">{client.name}</p>
                     <p className="mt-1 truncate text-slate-500">{formatPhone(client.phone)}</p>
@@ -421,7 +450,7 @@ export function DashboardOverview() {
               ))}
             </div>
 
-            <div className="space-y-3 rounded-[24px] border border-slate-200 bg-white p-4">
+            <div className="space-y-3 rounded-[26px] border border-slate-200 bg-white p-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="font-medium text-slate-950">Clientes críticos agora</p>
                 <Link href="/clientes?view=critical" className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:text-slate-950">
@@ -430,12 +459,10 @@ export function DashboardOverview() {
                 </Link>
               </div>
               {insights.criticalClients.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                  Nenhum cliente crítico identificado no momento.
-                </div>
+                <div className="rounded-[22px] border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">Nenhum cliente crítico identificado no momento.</div>
               ) : (
                 insights.criticalClients.map((client) => (
-                  <div key={client.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                  <div key={client.id} className="surface-muted rounded-[24px] p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-medium text-slate-950">{client.name}</p>
@@ -458,13 +485,13 @@ export function DashboardOverview() {
 
       <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
         <Card>
-          <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
+          <CardHeader className="p-5 pb-4 sm:p-6 sm:pb-4">
             <CardTitle>Clientes movimentados mais recentemente</CardTitle>
             <CardDescription>Útil para revisão rápida do que acabou de acontecer na carteira.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 p-4 pt-0 sm:p-6 sm:pt-0">
+          <CardContent className="space-y-3 p-5 pt-0 sm:p-6 sm:pt-0">
             {insights.recentClients.map((client) => (
-              <div key={client.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div key={client.id} className="surface-muted rounded-[24px] p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate font-medium text-slate-950">{client.name}</p>
@@ -478,24 +505,24 @@ export function DashboardOverview() {
         </Card>
 
         <Card>
-          <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
+          <CardHeader className="p-5 pb-4 sm:p-6 sm:pb-4">
             <CardTitle>Ações sugeridas</CardTitle>
             <CardDescription>Atalhos para limpar o que mais pesa agora sem navegar manualmente pelo sistema.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3 p-4 pt-0 sm:p-6 sm:pt-0 md:grid-cols-2">
-            <Link href="/clientes?view=critical" className="hover-lift rounded-[24px] border border-slate-200 bg-white p-4">
+          <CardContent className="grid gap-3 p-5 pt-0 sm:p-6 sm:pt-0 md:grid-cols-2">
+            <Link href="/clientes?view=critical" className="surface-muted hover-lift rounded-[24px] p-4">
               <p className="font-medium text-slate-950">Atacar críticos</p>
               <p className="mt-1 text-sm text-slate-500">Abrir a carteira já filtrada pelos casos com maior pressão.</p>
             </Link>
-            <Link href="/clientes?view=unassigned" className="hover-lift rounded-[24px] border border-slate-200 bg-white p-4">
+            <Link href="/clientes?view=unassigned" className="surface-muted hover-lift rounded-[24px] p-4">
               <p className="font-medium text-slate-950">Distribuir sem responsável</p>
               <p className="mt-1 text-sm text-slate-500">Tirar clientes órfãos da fila antes de vencerem.</p>
             </Link>
-            <Link href="/fila" className="hover-lift rounded-[24px] border border-slate-200 bg-white p-4">
+            <Link href="/fila" className="surface-muted hover-lift rounded-[24px] p-4">
               <p className="font-medium text-slate-950">Abrir fila operacional</p>
               <p className="mt-1 text-sm text-slate-500">Ver status por coluna e agir por estágio.</p>
             </Link>
-            <Link href="/clientes?view=waiting" className="hover-lift rounded-[24px] border border-slate-200 bg-white p-4">
+            <Link href="/clientes?view=waiting" className="surface-muted hover-lift rounded-[24px] p-4">
               <p className="font-medium text-slate-950">Priorizar retornos</p>
               <p className="mt-1 text-sm text-slate-500">Entrar direto nos casos aguardando contato.</p>
             </Link>

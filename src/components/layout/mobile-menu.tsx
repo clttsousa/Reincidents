@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Menu, Plus, X } from "lucide-react";
+import { Bell, LogOut, Menu, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -38,7 +38,6 @@ export function MobileMenu({ items, user }: MobileMenuProps) {
   const searchParams = useSearchParams();
   const menuRef = useOverlayBehavior({ open, onClose: () => setOpen(false) });
 
-
   const initials = useMemo(
     () =>
       (user.name ?? user.email ?? "US")
@@ -73,7 +72,7 @@ export function MobileMenu({ items, user }: MobileMenuProps) {
 
   return (
     <>
-      <Button variant="outline" size="icon" className="border-white/70 bg-white/80 shadow-none" onClick={() => setOpen(true)} aria-label="Abrir menu">
+      <Button variant="outline" size="icon" className="border-white/70 bg-white/85 shadow-none" onClick={() => setOpen(true)} aria-label="Abrir menu">
         <Menu className="size-4" />
       </Button>
 
@@ -81,22 +80,27 @@ export function MobileMenu({ items, user }: MobileMenuProps) {
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu principal">
           <button
             aria-label="Fechar menu"
-            className="absolute inset-0 bg-slate-950/45 backdrop-blur-sm"
+            className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
             onClick={() => setOpen(false)}
             type="button"
           />
 
-          <div ref={menuRef} tabIndex={-1} className="absolute left-0 top-0 h-full w-[90%] max-w-sm overflow-y-auto bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(15,23,42,0.94))] p-4 pb-6 text-white shadow-2xl">
+          <div ref={menuRef} tabIndex={-1} className="animate-enter absolute left-0 top-0 h-full w-[90%] max-w-sm overflow-y-auto bg-[linear-gradient(180deg,rgba(15,23,42,0.99),rgba(15,23,42,0.95))] p-4 pb-6 text-white shadow-2xl">
             <div className="flex items-center justify-between gap-3">
               <BrandLogo theme="dark" showTagline={false} />
-              <Button variant="outline" size="icon" className="border-white/10 bg-white/5 text-white" onClick={() => setOpen(false)} aria-label="Fechar menu lateral">
-                <X className="size-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex size-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/80" aria-hidden="true">
+                  <Bell className="size-4" />
+                </span>
+                <Button variant="outline" size="icon" className="border-white/10 bg-white/5 text-white" onClick={() => setOpen(false)} aria-label="Fechar menu lateral">
+                  <X className="size-4" />
+                </Button>
+              </div>
             </div>
 
-            <div className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-4">
+            <div className="mt-5 rounded-[28px] border border-white/10 bg-white/6 p-4 shadow-[0_24px_40px_-34px_rgba(0,0,0,0.55)]">
               <div className="flex items-start gap-3">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white text-sm font-semibold text-slate-950">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white text-sm font-semibold text-slate-950 shadow-[0_16px_36px_-28px_rgba(15,23,42,0.5)]">
                   {initials}
                 </div>
                 <div className="min-w-0">
@@ -129,15 +133,15 @@ export function MobileMenu({ items, user }: MobileMenuProps) {
                     href={item.href}
                     onClick={() => setOpen(false)}
                     className={cn(
-                      "flex items-center gap-3 rounded-2xl px-4 py-3.5 text-sm font-medium transition-all",
-                      active ? "bg-white text-slate-950" : "text-slate-300 hover:bg-white/10 hover:text-white",
+                      "flex items-center gap-3 rounded-[22px] px-4 py-3.5 text-sm font-medium transition-all",
+                      active ? "bg-white text-slate-950 shadow-[0_22px_40px_-30px_rgba(148,163,184,0.75)]" : "text-slate-300 hover:bg-white/10 hover:text-white",
                     )}
                   >
-                    <span className={cn("flex size-9 items-center justify-center rounded-xl", active ? "bg-slate-100" : "bg-white/6")}>
+                    <span className={cn("flex size-10 items-center justify-center rounded-2xl", active ? "bg-slate-100" : "bg-white/6")}>
                       <Icon className="size-4" />
                     </span>
                     <span className="flex-1">{item.label}</span>
-                    {active ? <span className="size-2 rounded-full bg-slate-950" /> : null}
+                    {active ? <span className="size-2 rounded-full bg-emerald-500" /> : null}
                   </Link>
                 );
               })}

@@ -129,12 +129,12 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-end bg-slate-950/35 backdrop-blur-sm md:items-stretch" role="dialog" aria-modal="true" aria-label={title}>
       <button aria-label="Fechar formulário" className="h-full flex-1 cursor-default" onClick={submitting ? undefined : onClose} type="button" />
-      <div ref={panelRef} tabIndex={-1} className="relative h-[94dvh] w-full overflow-y-auto rounded-t-[28px] border border-white/70 bg-white/95 shadow-2xl md:h-full md:max-w-4xl md:rounded-none md:border-y-0 md:border-r-0 md:border-l">
+      <div ref={panelRef} tabIndex={-1} className="animate-enter relative h-[94dvh] w-full overflow-y-auto rounded-t-[30px] border border-white/70 bg-white/95 shadow-2xl md:h-full md:max-w-4xl md:rounded-none md:border-y-0 md:border-r-0 md:border-l">
         <form className="flex min-h-full flex-col" onSubmit={handleSubmit}>
           <div className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/92 px-4 py-4 backdrop-blur sm:px-5 md:px-7">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-3">
-                <Badge className="w-fit bg-slate-950 text-white">Cadastro rápido</Badge>
+                <Badge className="w-fit shadow-[0_16px_30px_-24px_rgba(15,23,42,0.4)]">Cadastro rápido</Badge>
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight text-slate-950 md:text-2xl">{title}</h2>
                   <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
@@ -147,17 +147,17 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
           </div>
 
           <div className="flex-1 space-y-5 px-4 py-4 sm:px-5 md:space-y-6 md:px-7 md:py-6">
-            <section className="grid gap-4 rounded-[24px] border border-slate-200/80 bg-slate-50/70 p-4 sm:p-5 lg:grid-cols-[1.2fr_0.8fr]">
+            <section className="surface-muted grid gap-4 rounded-[28px] p-4 sm:p-5 lg:grid-cols-[1.2fr_0.8fr]">
               <div>
                 <p className="text-sm font-medium text-slate-900">Prévia operacional</p>
                 <p className="mt-1 text-sm text-slate-500">Os dados abaixo aparecem na fila e ajudam a equipe a agir rápido.</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                <div className="rounded-2xl border border-white bg-white px-4 py-3 shadow-sm">
+                <div className="rounded-[22px] border border-white bg-white px-4 py-3 shadow-[0_16px_28px_-24px_rgba(15,23,42,0.18)]">
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Telefone</p>
                   <p className="mt-1 text-sm font-semibold text-slate-900">{previewPhone || "(00) 00000-0000"}</p>
                 </div>
-                <div className="rounded-2xl border border-white bg-white px-4 py-3 shadow-sm">
+                <div className="rounded-[22px] border border-white bg-white px-4 py-3 shadow-[0_16px_28px_-24px_rgba(15,23,42,0.18)]">
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Responsável</p>
                   <p className="mt-1 text-sm font-semibold text-slate-900">{selectedAssignee?.name ?? "Selecione um usuário"}</p>
                 </div>
@@ -285,8 +285,8 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
               </div>
             </section>
 
-            <section className="grid gap-4 rounded-[24px] border border-slate-200/80 bg-slate-50/70 p-4 sm:p-5 lg:grid-cols-[1fr_1fr_1.2fr]">
-              <div className="rounded-2xl border border-white bg-white p-4 shadow-sm">
+            <section className="surface-muted grid gap-4 rounded-[28px] p-4 sm:p-5 lg:grid-cols-[1fr_1fr_1.2fr]">
+              <div className="rounded-[24px] border border-white bg-white p-4 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.18)]">
                 <div className="flex items-start gap-3">
                   <div className="flex size-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
                     <UserRound className="size-4" />
@@ -296,13 +296,13 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
                     <p className="mt-1 text-sm text-slate-500">Use quando o caso segue aberto na operação.</p>
                   </div>
                 </div>
-                <label className="mt-4 flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <label className="mt-4 flex cursor-pointer items-center justify-between rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3">
                   <span className="text-sm font-medium text-slate-700">Manter O.S. aberta</span>
                   <input type="checkbox" checked={values.osOpen} onChange={(event) => updateValue("osOpen", event.target.checked)} className="size-4 accent-slate-900" disabled={values.resolved} />
                 </label>
               </div>
 
-              <div className="rounded-2xl border border-white bg-white p-4 shadow-sm">
+              <div className="rounded-[24px] border border-white bg-white p-4 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.18)]">
                 <div className="flex items-start gap-3">
                   <div className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
                     <CheckCircle2 className="size-4" />
@@ -312,27 +312,39 @@ export function ClientFormSheet({ open, mode, client, assignees, submitting = fa
                     <p className="mt-1 text-sm text-slate-500">Fecha o caso e tira a O.S. do total aberto.</p>
                   </div>
                 </div>
-                <label className="mt-4 flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <label className="mt-4 flex cursor-pointer items-center justify-between rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3">
                   <span className="text-sm font-medium text-slate-700">Marcar como resolvido</span>
                   <input type="checkbox" checked={values.resolved} onChange={(event) => updateValue("resolved", event.target.checked)} className="size-4 accent-emerald-600" />
                 </label>
               </div>
 
-              <div className="rounded-2xl border border-white bg-white p-4 shadow-sm">
+              <div className="rounded-[24px] border border-white bg-white p-4 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.18)]">
                 <p className="font-medium text-slate-900">Observação interna</p>
                 <p className="mt-1 text-sm text-slate-500">Tudo que a equipe precisa saber sem depender de memória ou conversa paralela.</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {["Cliente prefere ligação", "Agendar retorno", "Visita técnica provável"].map((template) => (
+                    <button
+                      key={template}
+                      type="button"
+                      onClick={() => updateValue("notes", values.notes ? `${values.notes.trim()} · ${template}` : template)}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                    >
+                      {template}
+                    </button>
+                  ))}
+                </div>
                 <Textarea
                   value={values.notes}
                   onChange={(event) => updateValue("notes", event.target.value)}
                   placeholder="Ex.: Cliente idoso, prefere contato por ligação após 14h, já reclamou duas vezes da mesma TV box."
-                  className="mt-4 min-h-[132px] border-slate-200 bg-slate-50"
+                  className="mt-4 min-h-[132px] border-slate-200 bg-slate-50/85"
                 />
                 <ErrorText message={errors.notes} />
               </div>
             </section>
 
             {client?.updatedAt ? (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+              <div className="rounded-[22px] border border-slate-200 bg-slate-50/85 px-4 py-3 text-sm text-slate-500">
                 Última atualização registrada: <span className="font-medium text-slate-700">{formatDateLabel(client.updatedAt)}</span>
               </div>
             ) : null}

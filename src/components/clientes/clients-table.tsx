@@ -68,7 +68,7 @@ type PersistedFilters = {
 
 function MetricCard({ label, value, helper, className }: { label: string; value: string; helper?: string; className?: string }) {
   return (
-    <div className={cn("rounded-[22px] border border-slate-200 bg-white p-4 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.16)]", className)}>
+    <div className={cn("surface-card rounded-[24px] p-4", className)}>
       <p className="text-xs text-slate-500 sm:text-sm">{label}</p>
       <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">{value}</p>
       {helper ? <p className="mt-1 text-xs text-slate-400">{helper}</p> : null}
@@ -81,14 +81,14 @@ function LoadingState() {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
         {Array.from({ length: 5 }).map((_, index) => (
-          <div key={index} className={cn("h-[92px] animate-pulse rounded-[22px] border border-slate-200 bg-white/70", index === 0 && "col-span-2 xl:col-span-1")} />
+          <div key={index} className={cn("skeleton-shimmer h-[96px] rounded-[24px] border border-slate-200 bg-white/75", index === 0 && "col-span-2 xl:col-span-1")} />
         ))}
       </div>
-      <div className="rounded-[28px] border border-slate-200 bg-white p-6">
-        <div className="h-11 animate-pulse rounded-2xl bg-slate-100" />
+      <div className="surface-card rounded-[30px] p-6">
+        <div className="skeleton-shimmer h-11 rounded-2xl bg-slate-100" />
         <div className="mt-4 space-y-3">
           {Array.from({ length: 5 }).map((_, index) => (
-            <div key={index} className="h-[92px] animate-pulse rounded-[22px] bg-slate-100/80" />
+            <div key={index} className="skeleton-shimmer h-[92px] rounded-[24px] bg-slate-100/80" />
           ))}
         </div>
       </div>
@@ -98,8 +98,8 @@ function LoadingState() {
 
 function EmptyState({ onClear, onCreate }: { onClear: () => void; onCreate: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-4 py-14 text-center">
-      <div className="flex size-12 items-center justify-center rounded-full bg-white text-slate-500">
+    <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-200 bg-slate-50/90 px-4 py-14 text-center">
+      <div className="flex size-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.2)]">
         <Search className="size-5" />
       </div>
       <h3 className="mt-4 text-lg font-semibold text-slate-950">Nenhum cliente encontrado</h3>
@@ -497,7 +497,7 @@ export function ClientsTable() {
         </div>
 
         {staleClients.length > 0 ? (
-          <div className="flex flex-col gap-3 rounded-[24px] border border-amber-200 bg-amber-50 px-4 py-4 md:flex-row md:items-center md:justify-between">
+          <div className="animate-enter flex flex-col gap-3 rounded-[28px] border border-amber-200 bg-[linear-gradient(180deg,rgba(255,251,235,0.98),rgba(254,243,199,0.88))] px-4 py-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-start gap-3">
               <div className="mt-0.5 flex size-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
                 <ShieldAlert className="size-5" />
@@ -514,7 +514,7 @@ export function ClientsTable() {
           </div>
         ) : null}
 
-        <div className="surface-card rounded-[24px] p-4 sm:rounded-[28px] sm:p-5 md:p-6">
+        <div className="surface-card animate-enter rounded-[28px] p-4 sm:p-5 md:p-6">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row lg:items-center">
               <div className="relative w-full lg:w-[360px] lg:flex-none">
@@ -523,11 +523,11 @@ export function ClientsTable() {
                   ref={searchInputRef}
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
-                  className="pl-9"
+                  className="pl-10"
                   placeholder="Buscar por cliente, telefone, responsável ou O.S."
                 />
               </div>
-              <div className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600">
+              <div className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200/90 bg-white/95 px-4 text-sm font-medium text-slate-600 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.18)]">
                 {filteredClients.length} exibidos
               </div>
             </div>
@@ -547,6 +547,15 @@ export function ClientsTable() {
             </div>
           </div>
 
+          <div className="mt-4 grid gap-3 md:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
+              Use <span className="font-semibold text-slate-900">/</span> para focar na busca e <span className="font-semibold text-slate-900">N</span> para abrir cadastro rápido sem tirar a mão do teclado.
+            </div>
+            <div className="rounded-[24px] border border-slate-200 bg-white/92 px-4 py-3 text-sm text-slate-600 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.14)]">
+              {criticalOnly || staleOnly || activeFilter !== "Todos" || assigneeFilter !== "Todos" || osFilter !== "Todos" || resolvedFilter !== "Todos" ? "Você está vendo uma carteira filtrada." : "Você está vendo a carteira completa."}
+            </div>
+          </div>
+
           <div className="-mx-1 mt-4 overflow-x-auto pb-1">
             <div className="flex min-w-max gap-2 px-1">
               {quickFilters.map((filter) => {
@@ -558,7 +567,7 @@ export function ClientsTable() {
                     onClick={() => setActiveFilter(filter.value)}
                     className={cn(
                       "inline-flex shrink-0 items-center rounded-full border px-4 py-2 text-sm font-medium transition-all",
-                      isActive ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50",
+                      isActive ? "chip-active" : "chip-neutral hover:border-slate-300 hover:bg-slate-50",
                     )}
                   >
                     {filter.label}
@@ -570,16 +579,16 @@ export function ClientsTable() {
 
           <div className="mt-4 flex flex-wrap gap-2">
             {viewPresets.map((preset) => (
-              <Button key={preset.label} type="button" variant="outline" size="sm" className="rounded-full" onClick={() => applyPreset(preset.label)}>
+              <Button key={preset.label} type="button" variant="outline" size="sm" className="rounded-full border-slate-200/90 bg-white/90" onClick={() => applyPreset(preset.label)}>
                 {preset.label}
               </Button>
             ))}
-            <Badge variant="outline" className="rounded-full border-slate-200 bg-white text-slate-600">
+            <Badge variant="outline" className="rounded-full border-slate-200 bg-white/95 text-slate-600 shadow-[0_10px_22px_-22px_rgba(15,23,42,0.18)]">
               Atalhos: / buscar · N novo cliente
             </Badge>
           </div>
 
-          <div className="mt-4 grid gap-3 rounded-[22px] border border-slate-200 bg-slate-50 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_170px_150px_150px_150px_160px_auto]">
+          <div className="mt-4 grid gap-3 rounded-[26px] border border-slate-200 bg-slate-50/80 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_170px_150px_150px_150px_160px_auto]">
             <select
               value={assigneeFilter}
               onChange={(event) => setAssigneeFilter(event.target.value)}
@@ -646,22 +655,39 @@ export function ClientsTable() {
 
           {(activeFilter !== "Todos" || assigneeFilter !== "Todos" || criticalOnly || staleOnly || osFilter !== "Todos" || resolvedFilter !== "Todos") ? (
             <div className="mt-4 flex flex-wrap gap-2">
-              {activeFilter !== "Todos" ? <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">Status: {activeFilter}</Badge> : null}
+              {activeFilter !== "Todos" ? <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700">Status: {activeFilter}</Badge> : null}
               {assigneeFilter !== "Todos" ? (
-                <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">
+                <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700">
                   Responsável: {assigneeFilter === "Sem responsável" ? "Sem responsável" : activeAssignees.find((assignee) => assignee.id === assigneeFilter)?.name ?? "Equipe"}
                 </Badge>
               ) : null}
-              {criticalOnly ? <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">Somente críticos</Badge> : null}
-              {staleOnly ? <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">Sem atualização</Badge> : null}
-              {osFilter !== "Todos" ? <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">{osFilter}</Badge> : null}
-              {resolvedFilter !== "Todos" ? <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">{resolvedFilter}</Badge> : null}
-              <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">{density === "compact" ? "Compacto" : "Confortável"}</Badge>
+              {criticalOnly ? <Badge variant="outline" className="border-amber-200 bg-amber-50/95 text-amber-800">Somente críticos</Badge> : null}
+              {staleOnly ? <Badge variant="outline" className="border-rose-200 bg-rose-50/95 text-rose-700">Sem atualização</Badge> : null}
+              {osFilter !== "Todos" ? <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700">{osFilter}</Badge> : null}
+              {resolvedFilter !== "Todos" ? <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700">{resolvedFilter}</Badge> : null}
+              <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700">{density === "compact" ? "Compacto" : "Confortável"}</Badge>
             </div>
           ) : null}
 
-          <div className="mt-4 overflow-hidden rounded-[24px] border border-slate-200 bg-white">
-            <div className="hidden grid-cols-[minmax(240px,1.2fr)_180px_90px_170px_160px_140px_120px_220px] gap-4 border-b border-slate-200 bg-slate-50 px-6 py-4 text-sm font-medium text-slate-500 lg:grid">
+          <div className="mt-4 grid gap-2 sm:hidden">
+            <Button variant="outline" className="justify-center" onClick={exportCsv}>
+              <Download className="size-4" />
+              Exportar CSV
+            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" className="justify-center" onClick={() => setDensity((current) => (current === "comfortable" ? "compact" : "comfortable"))}>
+                <Rows3 className="size-4" />
+                {density === "comfortable" ? "Compacto" : "Confortável"}
+              </Button>
+              <Button className="justify-center" onClick={openCreateSheet}>
+                <Plus className="size-4" />
+                Novo cliente
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-4 overflow-hidden rounded-[28px] border border-slate-200 bg-white/96 shadow-[0_24px_46px_-34px_rgba(15,23,42,0.18)]">
+            <div className="hidden grid-cols-[minmax(240px,1.2fr)_180px_90px_170px_160px_140px_120px_220px] gap-4 border-b border-slate-200 bg-slate-50/90 px-6 py-4 text-sm font-medium text-slate-500 lg:grid">
               <span>Cliente</span>
               <span>Telefone</span>
               <span>Atend.</span>
@@ -684,7 +710,7 @@ export function ClientsTable() {
                   const rowBusy = updatingClientId === client.id;
 
                   return (
-                    <div key={client.id} className={cn("relative px-4 transition duration-200 hover:bg-slate-50/70 lg:px-6", density === "compact" ? "py-3" : "py-5", isCritical && "bg-amber-50/25")}>
+                    <div key={client.id} className={cn("relative animate-enter px-4 transition duration-200 hover:bg-slate-50/85 lg:px-6", density === "compact" ? "py-3" : "py-5", isCritical && "bg-amber-50/25")} onDoubleClick={() => openTimeline(client)}>
                       <div className="hidden grid-cols-[minmax(240px,1.2fr)_180px_90px_170px_160px_140px_120px_220px] items-start gap-4 lg:grid">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
@@ -787,7 +813,7 @@ export function ClientsTable() {
                             <p className="mt-1 text-sm text-slate-500">{formatPhone(client.phone)}</p>
                             <p className="mt-2 text-xs text-slate-400">Atualizado {formatDateLabel(client.updatedAt)}</p>
                           </div>
-                          <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">
+                          <Badge variant="outline" className="border-slate-200 bg-white/95 text-slate-700">
                             {client.totalServices}x
                           </Badge>
                         </div>
