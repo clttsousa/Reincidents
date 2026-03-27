@@ -195,7 +195,7 @@ export function MobileMenu({ items, user }: MobileMenuProps) {
 
             {/* Footer */}
             <div className="mt-6 rounded-[20px] border border-white/6 bg-white/3 px-4 py-3">
-              <p className="text-[11px] text-slate-500">RecorrênciaOS v4.9.0 · Premium</p>
+              <p className="text-[11px] text-slate-500">RecorrênciaOS v5.5.0 · Premium</p>
             </div>
           </div>
         </div>

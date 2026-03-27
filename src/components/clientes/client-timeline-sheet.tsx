@@ -154,7 +154,7 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
+          transition={{ duration: 0.16, ease: "easeOut" }}
           className="dialog-backdrop fixed inset-0 z-[95] flex items-center justify-center p-3 sm:p-6"
           onClick={(event) => {
             if (event.target === event.currentTarget && !busy) onClose();
@@ -165,13 +165,13 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
         >
           <motion.div
             ref={panelRef}
-            initial={{ opacity: 0, y: 22, scale: 0.985 }}
+            initial={{ opacity: 0, y: 18, scale: 0.99 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 14, scale: 0.985 }}
-            transition={{ type: "spring", stiffness: 320, damping: 28, mass: 0.72 }}
-            className="dialog-shell relative flex max-h-[min(88vh,900px)] w-full max-w-[980px] flex-col overflow-hidden rounded-[28px]"
+            exit={{ opacity: 0, y: 12, scale: 0.99 }}
+            transition={{ type: "spring", stiffness: 300, damping: 28, mass: 0.76 }}
+            className="dialog-shell relative flex max-h-[calc(100vh-32px)] w-full max-w-[1040px] flex-col overflow-hidden rounded-[30px]"
           >
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.12),transparent_48%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.08),transparent_36%)]" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.1),transparent_44%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.08),transparent_34%)]" />
 
             <div className="relative border-b border-slate-100/90 px-5 py-5 dark:border-slate-800/60 sm:px-6">
               <div className="flex items-start justify-between gap-4">
@@ -179,7 +179,7 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
                   <Badge className="rounded-full bg-slate-950 text-white dark:bg-slate-100 dark:text-slate-950">
                     Timeline do cliente
                   </Badge>
-                  <h2 className="mt-3 text-[1.45rem] font-semibold tracking-[-0.04em] text-slate-950 dark:text-slate-50 sm:text-[1.65rem]">
+                  <h2 className="mt-3 text-[1.45rem] font-semibold tracking-[-0.04em] text-slate-950 dark:text-slate-50 sm:text-[1.7rem]">
                     {client.name}
                   </h2>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
@@ -190,6 +190,9 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
                       <Badge variant="outline" className="rounded-full">
                         Responsável vinculado
                       </Badge>
+                    ) : null}
+                    {overdueNextAction ? (
+                      <Badge className="rounded-full bg-rose-600 text-white">Ação atrasada</Badge>
                     ) : null}
                   </div>
                 </div>
@@ -208,7 +211,7 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
                     <div
                       key={item.label}
                       className={cn(
-                        "dialog-section-muted flex items-start gap-3 p-4",
+                        "dialog-panel-soft flex items-start gap-3 p-4",
                         item.emphasis && "border-rose-200/75 bg-rose-50/75 dark:border-rose-500/25 dark:bg-rose-500/10",
                       )}
                     >
@@ -229,8 +232,27 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
                 })}
               </section>
 
+              <section className="dialog-panel-soft mt-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-slate-500 dark:bg-slate-900/70 dark:text-slate-300">
+                    <UserRound className="h-[18px] w-[18px]" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Leitura rápida</p>
+                    <p className="text-sm font-medium text-slate-950 dark:text-slate-50">
+                      {client.resolved ? "Cliente encerrado com histórico disponível." : "Cliente ainda em acompanhamento, com histórico consolidado."}
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                      {client.notes?.trim()
+                        ? client.notes
+                        : "Ainda não há nota fixa salva neste cliente. Use as observações abaixo para registrar o contexto atual da equipe."}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
               <section className="mt-4 grid gap-4 xl:grid-cols-2">
-                <div className="dialog-section">
+                <div className="dialog-panel">
                   <div className="flex items-center gap-2">
                     <MessageSquarePlus className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                     <h3 className="font-semibold text-slate-950 dark:text-slate-50">Adicionar observação</h3>
@@ -253,7 +275,7 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
                   <Textarea
                     value={note}
                     onChange={(event) => setNote(event.target.value)}
-                    className="mt-4 min-h-[152px]"
+                    className="mt-4 min-h-[172px] rounded-[22px]"
                     placeholder="Escreva uma observação objetiva para a equipe."
                   />
                   <Button className="mt-3 w-full sm:w-auto" onClick={handleAddNote} disabled={busy || note.trim().length < 3}>
@@ -262,7 +284,7 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
                   </Button>
                 </div>
 
-                <div className="dialog-section">
+                <div className="dialog-panel">
                   <div className="flex items-center gap-2">
                     <PhoneOutgoing className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                     <h3 className="font-semibold text-slate-950 dark:text-slate-50">Registrar tentativa de contato</h3>
@@ -271,18 +293,18 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
                     Atualize o retorno do cliente e, se necessário, deixe a próxima ação já agendada.
                   </p>
 
-                  <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_250px]">
+                  <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_240px]">
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Descrição do contato</label>
                       <Textarea
                         value={contactNote}
                         onChange={(event) => setContactNote(event.target.value)}
-                        className="min-h-[164px]"
+                        className="min-h-[172px] rounded-[22px]"
                         placeholder="Resumo do retorno, ausência de resposta ou orientação passada ao cliente."
                       />
                     </div>
 
-                    <div className="space-y-3 rounded-[22px] border border-slate-200/85 bg-slate-50/82 p-4 dark:border-slate-700/50 dark:bg-slate-900/55">
+                    <div className="space-y-3">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Próxima ação</label>
                         <Input type="datetime-local" value={nextActionAt} onChange={(event) => setNextActionAt(event.target.value)} />
@@ -299,93 +321,70 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
                 </div>
               </section>
 
-              <section className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-                <section className="dialog-section min-w-0">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-2">
-                      <Clock3 className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                      <h3 className="font-semibold text-slate-950 dark:text-slate-50">Histórico cronológico</h3>
-                    </div>
-                    <div className="flex flex-wrap gap-2 rounded-[20px] border border-slate-200 bg-white/90 p-1.5 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.16)] dark:border-slate-700/55 dark:bg-slate-900/60">
-                      {filterOptions.map(([value, label]) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => setFilter(value)}
-                          className={cn(
-                            "rounded-[16px] px-3 py-2 text-sm font-medium transition-all",
-                            filter === value ? "chip-active" : "chip-neutral hover:border-slate-300 hover:bg-slate-50 dark:bg-slate-800/40",
-                          )}
-                        >
-                          {label}
-                        </button>
-                      ))}
+              <section className="dialog-panel mt-4 min-w-0">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock3 className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                    <h3 className="font-semibold text-slate-950 dark:text-slate-50">Histórico cronológico</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2 rounded-[20px] border border-slate-200 bg-white/90 p-1.5 dark:border-slate-700/55 dark:bg-slate-900/60">
+                    {filterOptions.map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setFilter(value)}
+                        className={cn(
+                          "rounded-[16px] px-3 py-2 text-sm font-medium transition-all",
+                          filter === value ? "chip-active" : "chip-neutral hover:border-slate-300 hover:bg-slate-50 dark:bg-slate-800/40",
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {loading ? (
+                  <div className="mt-4 flex min-h-[220px] items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-slate-50/70 dark:border-slate-700/50 dark:bg-slate-800/40">
+                    <div className="flex items-center gap-3 text-sm font-medium text-slate-500 dark:text-slate-400">
+                      <Loader2 className="size-4 animate-spin" />
+                      Carregando timeline...
                     </div>
                   </div>
-
-                  {loading ? (
-                    <div className="mt-4 flex min-h-[220px] items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-slate-50/70 dark:border-slate-700/50 dark:bg-slate-800/40">
-                      <div className="flex items-center gap-3 text-sm font-medium text-slate-500 dark:text-slate-400">
-                        <Loader2 className="size-4 animate-spin" />
-                        Carregando timeline...
-                      </div>
-                    </div>
-                  ) : groupedTimeline.length === 0 ? (
-                    <div className="mt-4 rounded-[24px] border border-dashed border-slate-200 bg-slate-50/80 px-5 py-10 text-center dark:border-slate-700/50 dark:bg-slate-800/35">
-                      <p className="font-medium text-slate-900 dark:text-slate-100">Nenhuma movimentação registrada ainda.</p>
-                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        As mudanças de status, notas e tentativas de contato vão aparecer aqui.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="mt-4 space-y-4">
-                      {groupedTimeline.map(([groupLabel, entries]) => (
-                        <div key={groupLabel} className="space-y-3">
-                          <div className="inline-flex rounded-full border border-slate-200 bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-500 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.18)] dark:border-slate-700/55 dark:bg-slate-950/85 dark:text-slate-300">
-                            {groupLabel}
-                          </div>
-                          {entries.map((entry) => (
-                            <div key={entry.id} className="rounded-[24px] border border-slate-200/85 bg-white/95 p-4 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.14)] dark:border-slate-700/55 dark:bg-slate-900/75">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Badge variant={entry.type === "note" ? "secondary" : "outline"} className="uppercase tracking-[0.14em]">
-                                  {timelineActionLabel(entry)}
-                                </Badge>
-                                <p className="font-semibold text-slate-950 dark:text-slate-50">{entry.title}</p>
-                              </div>
-                              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">{entry.description}</p>
-                              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-400 dark:text-slate-500">
-                                <span>{entry.actorName}</span>
-                                <span>•</span>
-                                <span>{formatDateLabel(entry.createdAt)}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-
-                <aside className="space-y-4">
-                  <div className="dialog-section-muted">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-slate-500 dark:bg-slate-900/70 dark:text-slate-300">
-                        <UserRound className="h-[18px] w-[18px]" />
-                      </div>
-                      <div>
-                        <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Leitura rápida</p>
-                        <p className="text-sm font-medium text-slate-950 dark:text-slate-50">
-                          {client.resolved ? "Cliente encerrado com histórico disponível." : "Cliente ainda em acompanhamento."}
-                        </p>
-                      </div>
-                    </div>
-                    <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                      {client.notes?.trim()
-                        ? client.notes
-                        : "Ainda não há nota fixa salva neste cliente. Use a observação para registrar o contexto atual da equipe."}
+                ) : groupedTimeline.length === 0 ? (
+                  <div className="mt-4 rounded-[24px] border border-dashed border-slate-200 bg-slate-50/80 px-5 py-10 text-center dark:border-slate-700/50 dark:bg-slate-800/35">
+                    <p className="font-medium text-slate-900 dark:text-slate-100">Nenhuma movimentação registrada ainda.</p>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      As mudanças de status, notas e tentativas de contato vão aparecer aqui.
                     </p>
                   </div>
-                </aside>
+                ) : (
+                  <div className="mt-4 space-y-4">
+                    {groupedTimeline.map(([groupLabel, entries]) => (
+                      <div key={groupLabel} className="space-y-3">
+                        <div className="inline-flex rounded-full border border-slate-200 bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:border-slate-700/55 dark:bg-slate-950/85 dark:text-slate-300">
+                          {groupLabel}
+                        </div>
+                        {entries.map((entry) => (
+                          <div key={entry.id} className="rounded-[24px] border border-slate-200/85 bg-white/92 p-4 dark:border-slate-700/55 dark:bg-slate-900/64">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant={entry.type === "note" ? "secondary" : "outline"} className="uppercase tracking-[0.14em]">
+                                {timelineActionLabel(entry)}
+                              </Badge>
+                              <p className="font-semibold text-slate-950 dark:text-slate-50">{entry.title}</p>
+                            </div>
+                            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">{entry.description}</p>
+                            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-400 dark:text-slate-500">
+                              <span>{entry.actorName}</span>
+                              <span>•</span>
+                              <span>{formatDateLabel(entry.createdAt)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </section>
             </div>
           </motion.div>
