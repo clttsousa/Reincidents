@@ -120,42 +120,6 @@ function MetricCard({
 function LoadingState() {
   return (
     <div className="space-y-6 animate-enter">
-      {workspaceOpen ? (
-        <div ref={workspaceRef} className="space-y-4 scroll-mt-28">
-          <section className="page-panel-muted flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="section-heading">Área ativa da carteira</p>
-              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                Cadastro e leitura do cliente abrem direto na tela principal, sem bloquear o restante da página e sem depender de overlay.
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              className="h-11 rounded-2xl px-5"
-              onClick={() => {
-                setSheetOpen(false);
-                setTimelineOpen(false);
-              }}
-            >
-              Fechar painel
-            </Button>
-          </section>
-
-          {sheetOpen ? (
-            <ClientFormSheet
-              open={sheetOpen}
-              mode={sheetMode}
-              client={selectedClient}
-              assignees={assignees}
-              submitting={formSubmitting}
-              onClose={() => setSheetOpen(false)}
-              onSubmit={handleSave}
-            />
-          ) : null}
-
-          {timelineOpen ? <ClientTimelineSheet open={timelineOpen} client={selectedClient} onClose={() => setTimelineOpen(false)} /> : null}
-        </div>
-      ) : null}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="skeleton-shimmer h-32 rounded-[24px]" />
