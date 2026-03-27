@@ -21,7 +21,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <div className="flex min-h-screen flex-1 flex-col lg:pl-[282px]">
           <AppHeader user={session.user} />
           <main className="flex-1 px-3 pb-24 pt-3 sm:px-6 lg:px-8 lg:pb-10 lg:pt-5">
-            {children}
+            <div className="page-shell">{children}</div>
           </main>
         </div>
       </div>

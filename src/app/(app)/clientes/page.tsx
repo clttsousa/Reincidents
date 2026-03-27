@@ -5,7 +5,7 @@ export default function ClientesPage() {
   return (
     <ClientsProvider>
       <div className="space-y-5 sm:space-y-6">
-        <section className="surface-soft animate-enter rounded-[28px] px-5 py-4 sm:px-6">
+        <section className="page-panel animate-enter">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="section-heading">Carteira operacional</p>

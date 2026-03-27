@@ -66,10 +66,10 @@ export function AppHeader({ user }: AppHeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 px-4 pt-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-30 px-3 pt-3 sm:px-6 lg:px-8">
       <div
         className={[
-          "surface-soft animate-enter flex min-h-[84px] items-center gap-3 rounded-[28px] px-4 py-3 sm:px-5",
+          "surface-soft animate-enter mx-auto flex min-h-[78px] w-full max-w-[1360px] items-center gap-3 rounded-[24px] px-4 py-3 sm:px-5",
           "dark:bg-[rgba(14,20,32,0.92)] dark:border-slate-700/40",
         ].join(" ")}
       >
