@@ -14,6 +14,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ClientFormSheet } from "@/components/clientes/client-form-sheet";
 import { ClientTimelineSheet } from "@/components/clientes/client-timeline-sheet";
 import { useClients } from "@/components/providers/clients-provider";
@@ -133,6 +134,10 @@ export function ClientsTable() {
   const { clients, stats, loading, updateClientStatus, updateClient, addClient, assignees } = useClients();
   const { pushToast } = useToast();
 
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [searchInput, setSearchInput] = useState(defaultFilters.search);
   const debouncedSearch = useDebouncedValue(searchInput, 300);
   const [activeFilter, setActiveFilter] = useState<PersistedFilters["activeFilter"]>(defaultFilters.activeFilter);
@@ -197,6 +202,19 @@ export function ClientsTable() {
     window.addEventListener("recorrenciaos:new-client", onQuickCreate);
     return () => window.removeEventListener("recorrenciaos:new-client", onQuickCreate);
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("create") !== "1") return;
+
+    setSheetMode("create");
+    setSelectedClient(null);
+    setSheetOpen(true);
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("create");
+    const query = nextParams.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname);
+  }, [pathname, router, searchParams]);
 
   const filteredClients = useMemo(() => {
     let result = [...clients];
@@ -302,10 +320,8 @@ export function ClientsTable() {
       let success = false;
       if (sheetMode === "create") {
         success = await addClient(values);
-        if (success) pushToast({ tone: "success", title: "Cliente criado", description: "O novo cliente foi adicionado à carteira." });
       } else if (selectedClient) {
         success = await updateClient(selectedClient.id, values);
-        if (success) pushToast({ tone: "success", title: "Cliente atualizado", description: "As alterações foram salvas com sucesso." });
       }
       return success;
     } finally {
@@ -317,7 +333,6 @@ export function ClientsTable() {
     if (!pendingStatusChange) return;
     await updateClientStatus(pendingStatusChange.clientId, pendingStatusChange.nextStatus);
     setPendingStatusChange(null);
-    pushToast({ tone: "success", title: "Status atualizado", description: `O cliente agora está como ${pendingStatusChange.nextStatus}.` });
   };
 
   if (loading) return <LoadingState />;

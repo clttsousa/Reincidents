@@ -325,23 +325,6 @@ export function DashboardOverview() {
       icon: Sparkles,
       emphasis: "warning",
     },
-    {
-      key: "updated",
-      label: "Atualizados",
-      value: insights.updated.current,
-      helper: `Movimentados nos últimos ${period} dias.`,
-      href: "/clientes",
-      icon: TrendingUp,
-      trend: insights.updated,
-    },
-    {
-      key: "unassigned",
-      label: "Sem responsável",
-      value: insights.unassigned,
-      helper: `${insights.dueSoon} com ação nas próximas 48h.`,
-      href: "/clientes?view=unassigned",
-      icon: Users,
-    },
   ];
 
   const maxTouched = insights.productivity.reduce((acc, item) => Math.max(acc, item.touched), 0);
@@ -403,10 +386,10 @@ export function DashboardOverview() {
         <div className="space-y-6">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-3xl">
-              <p className="section-heading">Visão executiva</p>
-              <h1 className="mt-3 page-title">Dashboard gerencial com leitura premium, mais limpo e mais acionável</h1>
-              <p className="page-description">
-                Agora o painel prioriza o que precisa de ação, deixa a carteira mais legível e organiza os sinais operacionais em blocos mais claros.
+              <p className="section-heading">Leitura do período</p>
+              <h1 className="mt-3 text-[1.55rem] font-semibold tracking-[-0.04em] text-slate-950 dark:text-slate-50 sm:text-[1.8rem]">Pulso da operação e prioridades do dia</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+                Menos ruído visual, mais clareza sobre vencidos, gargalos, clientes quentes e ritmo de fechamento.
               </p>
             </div>
 
@@ -451,7 +434,7 @@ export function DashboardOverview() {
               <div className="surface-dark rounded-[30px] p-5 text-white sm:p-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="max-w-xl">
-                    <Badge className="border-white/10 bg-white/10 text-white">Atenção imediata</Badge>
+                    <Badge className="border-white/10 bg-white/10 text-white">Prioridade do dia</Badge>
                     <h2 className="mt-4 text-2xl font-semibold tracking-tight">
                       {insights.overdue > 0
                         ? `${insights.overdue} vencidos e ${insights.dueSoon} próximos do prazo`
@@ -459,8 +442,8 @@ export function DashboardOverview() {
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-slate-200">
                       {insights.overdue > 0
-                        ? "Priorize follow-ups vencidos, redistribua quem está sem responsável e reduza o estoque de casos sem retorno."
-                        : "Use o período para atacar recorrentes, reorganizar a carteira e baixar a pressão das pendências abertas."}
+                        ? "Atue primeiro no que venceu, no que está prestes a vencer e nos casos sem resposta consistente."
+                        : "A carteira está respirando melhor. Aproveite para fechar pendências abertas e antecipar follow-ups."}
                     </p>
                   </div>
                   <div className="rounded-[24px] border border-white/10 bg-white/8 px-4 py-3">
@@ -570,7 +553,7 @@ export function DashboardOverview() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
             {cards.map((card) => (
               <DashboardMetricCard key={card.key} card={card} />
             ))}

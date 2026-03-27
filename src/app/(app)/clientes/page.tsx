@@ -4,13 +4,16 @@ import { ClientsProvider } from "@/components/providers/clients-provider";
 export default function ClientesPage() {
   return (
     <ClientsProvider>
-      <div className="space-y-4 sm:space-y-5">
-        <section className="surface-card section-shell animate-enter">
-          <p className="section-heading">Operação</p>
-          <h1 className="mt-3 page-title">Clientes recorrentes</h1>
-          <p className="page-description sm:max-w-2xl">
-            Acompanhe a carteira, ajuste status, registre próximas ações e abra a timeline de cada cliente para manter toda a equipe alinhada.
-          </p>
+      <div className="space-y-5 sm:space-y-6">
+        <section className="surface-soft animate-enter rounded-[28px] px-5 py-4 sm:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="section-heading">Carteira operacional</p>
+              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                Uma visão mais limpa para filtrar, editar e cadastrar clientes sem quebrar o fluxo da equipe.
+              </p>
+            </div>
+          </div>
         </section>
 
         <ClientsTable />

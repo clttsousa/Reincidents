@@ -68,7 +68,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
 
         {/* Footer */}
         <div className="mt-4 rounded-[20px] border border-white/6 bg-white/3 px-4 py-3">
-          <p className="text-[11px] text-slate-500">RecorrênciaOS v5.2.0</p>
+          <p className="text-[11px] text-slate-500">RecorrênciaOS v5.3.0</p>
           <p className="mt-0.5 text-[11px] text-slate-600">Premium · Operação contínua</p>
         </div>
       </div>
