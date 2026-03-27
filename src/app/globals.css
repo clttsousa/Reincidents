@@ -139,6 +139,30 @@
     box-shadow: 0 32px 72px -42px rgba(15, 23, 42, 0.66);
   }
 
+  .dialog-backdrop {
+    background: rgba(2, 6, 23, 0.52);
+    backdrop-filter: blur(4px);
+  }
+
+  .dialog-shell {
+    background: linear-gradient(180deg, var(--surface-1) 0%, var(--surface-2) 100%);
+    border: 1px solid transparent;
+    box-shadow: 0 26px 90px -46px rgba(15, 23, 42, 0.48);
+    backdrop-filter: blur(16px);
+  }
+
+  .dialog-section {
+    @apply rounded-[24px] border border-slate-200/85 bg-white/92 p-4 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.14)] dark:border-slate-700/55 dark:bg-slate-900/70;
+  }
+
+  .dialog-section-muted {
+    @apply rounded-[24px] border border-slate-200/75 bg-slate-50/82 p-4 shadow-[0_16px_36px_-34px_rgba(15,23,42,0.12)] dark:border-slate-700/45 dark:bg-slate-800/55;
+  }
+
+  .scroll-stable {
+    scrollbar-gutter: stable both-edges;
+  }
+
   .section-shell {
     @apply rounded-[30px] p-4 sm:p-6 lg:p-7;
   }
