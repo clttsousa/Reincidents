@@ -1,18 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import {
-  Calendar,
-  CheckCircle2,
-  Clock3,
-  Info,
-  Save,
-  ShieldCheck,
-  Sparkles,
-  UserRound,
-  X,
-} from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { Calendar, CheckCircle2, Clock3, Info, Save, ShieldCheck, Sparkles, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,8 +14,6 @@ import {
   statusOptions,
   validateClientForm,
 } from "@/lib/client-helpers";
-import { useOverlayBehavior } from "@/hooks/use-overlay-behavior";
-import { cn } from "@/lib/utils";
 import type { AssigneeOption, ClientFormValues, ClientRecord } from "@/types/mock";
 
 interface ClientFormSheetProps {
@@ -50,12 +37,13 @@ export function ClientFormSheet({
 }: ClientFormSheetProps) {
   const [values, setValues] = useState<ClientFormValues>(clientToFormValues());
   const [errors, setErrors] = useState<Partial<Record<keyof ClientFormValues, string>>>({});
-  const panelRef = useOverlayBehavior({ open, onClose, disableClose: submitting });
+  const rootRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setValues(clientToFormValues(client ?? undefined));
     setErrors({});
+    requestAnimationFrame(() => rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }, [client, open]);
 
   const updateValue = <K extends keyof ClientFormValues>(field: K, value: ClientFormValues[K]) => {
@@ -141,372 +129,239 @@ export function ClientFormSheet({
     },
   ];
 
-  const operationToggles = [
-    {
-      key: "osOpen" as const,
-      label: "O.S. em aberto",
-      helper: "Mantém o caso na carga ativa da operação.",
-      active: values.osOpen,
-      tone: values.osOpen ? "indigo" : "neutral",
-      icon: Info,
-      onClick: () => updateValue("osOpen", !values.osOpen),
-    },
-    {
-      key: "resolved" as const,
-      label: "Caso resolvido",
-      helper: "Fecha o ciclo atual sem sair da tela.",
-      active: values.resolved,
-      tone: values.resolved ? "emerald" : "neutral",
-      icon: CheckCircle2,
-      onClick: () => updateValue("resolved", !values.resolved),
-    },
-  ];
-
-  const sectionTitleClass = "text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400";
-  const fieldLabelClass = "text-sm font-medium text-slate-700 dark:text-slate-300";
-  const selectClass =
-    "h-12 w-full rounded-2xl border border-slate-200/90 bg-white/95 px-4 text-sm text-slate-950 outline-none transition-all focus:border-blue-400/70 focus:ring-4 focus:ring-blue-500/12 dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-slate-100 dark:focus:border-indigo-500/60 dark:focus:ring-indigo-500/15";
+  if (!open) return null;
 
   return (
-    <AnimatePresence>
-      {open ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.16, ease: "easeOut" }}
-          className="dialog-backdrop fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-6"
-          onClick={(event) => {
-            if (event.target === event.currentTarget && !submitting) onClose();
-          }}
-          role="dialog"
-          aria-modal="true"
-          aria-label={mode === "create" ? "Cadastrar cliente" : `Editar ${client?.name ?? "cliente"}`}
-        >
-          <motion.div
-            ref={panelRef}
-            initial={{ opacity: 0, y: 18, scale: 0.99 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.99 }}
-            transition={{ type: "spring", stiffness: 300, damping: 28, mass: 0.76 }}
-            className="dialog-shell relative flex max-h-[calc(100vh-32px)] w-full max-w-[980px] flex-col overflow-hidden rounded-[30px]"
+    <section ref={rootRef} className="workspace-shell animate-enter scroll-mt-28">
+      <div className="workspace-header">
+        <div className="min-w-0">
+          <Badge
+            variant="outline"
+            className="rounded-full border-indigo-200 bg-indigo-50/90 px-3 py-1 text-indigo-700 dark:border-indigo-500/25 dark:bg-indigo-500/12 dark:text-indigo-300"
           >
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.1),transparent_44%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.08),transparent_34%)]" />
+            {mode === "create" ? "Novo cliente" : "Editar cadastro"}
+          </Badge>
+          <h2 className="mt-3 text-[1.45rem] font-semibold tracking-[-0.04em] text-slate-950 dark:text-slate-50 sm:text-[1.7rem]">
+            {mode === "create" ? "Cadastrar cliente" : `Editar ${client?.name}`}
+          </h2>
+          <p className="mt-1.5 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+            Formulário aberto na área principal, sem overlay e sem mini-dashboard dentro de modal. O foco fica no cadastro, com leitura limpa e edição direta.
+          </p>
+        </div>
 
-            <div className="relative border-b border-slate-100/90 px-5 py-5 dark:border-slate-800/60 sm:px-6">
-              <div className="flex items-start justify-between gap-4">
+        <Button type="button" variant="ghost" size="icon" onClick={onClose} className="rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" disabled={submitting}>
+          <X className="size-5" />
+        </Button>
+      </div>
+
+      <div className="workspace-divider" />
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <section className="grid gap-3 md:grid-cols-3">
+          {summaryItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.label} className="workspace-stat">
+                <div className="workspace-stat-icon">
+                  <Icon className="size-[18px]" />
+                </div>
                 <div className="min-w-0">
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-indigo-200 bg-indigo-50/90 px-3 py-1 text-indigo-700 dark:border-indigo-500/25 dark:bg-indigo-500/12 dark:text-indigo-300"
-                  >
-                    {mode === "create" ? "Novo cliente" : "Editar cadastro"}
-                  </Badge>
-                  <h2 className="mt-3 text-[1.45rem] font-semibold tracking-[-0.04em] text-slate-950 dark:text-slate-50 sm:text-[1.7rem]">
-                    {mode === "create" ? "Cadastrar cliente" : `Editar ${client?.name}`}
-                  </h2>
-                  <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-                    Estrutura mais leve, com um único shell forte e grupos internos mais discretos para o formulário não competir com a tela ao fundo.
-                  </p>
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
+                  <p className="mt-1 truncate text-sm font-semibold text-slate-950 dark:text-slate-50">{item.value}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{item.helper}</p>
+                </div>
+              </div>
+            );
+          })}
+        </section>
+
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
+          <div className="space-y-4">
+            <section className="workspace-group">
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                <h3 className="workspace-group-title">Contato e responsável</h3>
+              </div>
+
+              <div className="mt-4 space-y-4">
+                <div className="space-y-2">
+                  <label className="workspace-field-label">Nome completo</label>
+                  <Input value={values.name} onChange={(event) => updateValue("name", event.target.value)} placeholder="Ex.: João Silva" />
+                  {errors.name ? <p className="text-xs text-rose-600">{errors.name}</p> : null}
                 </div>
 
-                <Button
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="workspace-field-label">Telefone / WhatsApp</label>
+                    <Input value={values.phone} onChange={(event) => updateValue("phone", event.target.value)} placeholder="(00) 00000-0000" />
+                    {errors.phone ? <p className="text-xs text-rose-600">{errors.phone}</p> : null}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="workspace-field-label">Responsável</label>
+                    <select
+                      value={values.responsibleUserId}
+                      onChange={(event) => updateValue("responsibleUserId", event.target.value)}
+                      className="workspace-select"
+                    >
+                      <option value="">Selecione um responsável</option>
+                      {assignees.map((assignee) => (
+                        <option key={assignee.id} value={assignee.id}>
+                          {assignee.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {selectedAssignee ? (
+                  <div className="rounded-[18px] border border-slate-200/90 bg-slate-50/90 px-4 py-3 text-sm text-slate-500 dark:border-slate-700/60 dark:bg-slate-800/40 dark:text-slate-400">
+                    Responsável atual: <span className="font-medium text-slate-900 dark:text-slate-100">{selectedAssignee.name}</span>
+                  </div>
+                ) : null}
+              </div>
+            </section>
+
+            <section className="workspace-group">
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                <h3 className="workspace-group-title">Contexto do caso</h3>
+              </div>
+
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="workspace-field-label">Descrição do caso</label>
+                  <Textarea
+                    value={values.description}
+                    onChange={(event) => updateValue("description", event.target.value)}
+                    className="min-h-[178px] rounded-[22px]"
+                    placeholder="Resumo do problema, ruído operacional ou motivo da recorrência."
+                  />
+                  {errors.description ? <p className="text-xs text-rose-600">{errors.description}</p> : null}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="workspace-field-label">Notas internas</label>
+                  <Textarea
+                    value={values.notes}
+                    onChange={(event) => updateValue("notes", event.target.value)}
+                    className="min-h-[178px] rounded-[22px]"
+                    placeholder="Detalhes para a equipe: contexto, retorno, risco ou orientação combinada."
+                  />
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div className="space-y-4">
+            <section className="workspace-group">
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                <h3 className="workspace-group-title">Status, datas e operação</h3>
+              </div>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="workspace-field-label">Status atual</label>
+                  <select value={values.status} onChange={(event) => updateValue("status", event.target.value as ClientFormValues["status"])} className="workspace-select">
+                    {statusOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="workspace-field-label">Recorrências registradas</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={values.totalServices}
+                    onChange={(event) => updateValue("totalServices", Number(event.target.value || 0))}
+                  />
+                  {errors.totalServices ? <p className="text-xs text-rose-600">{errors.totalServices}</p> : null}
+                </div>
+
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="workspace-field-label">Número da O.S.</label>
+                  <Input value={values.osNumber} onChange={(event) => updateValue("osNumber", event.target.value)} placeholder="Ex: OS-12345" />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="workspace-field-label">Último contato</label>
+                  <Input type="datetime-local" value={values.lastContactAt ? values.lastContactAt.slice(0, 16) : ""} onChange={(event) => updateValue("lastContactAt", event.target.value)} />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="workspace-field-label">Próxima ação</label>
+                  <Input type="datetime-local" value={values.nextActionAt ? values.nextActionAt.slice(0, 16) : ""} onChange={(event) => updateValue("nextActionAt", event.target.value)} />
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={onClose}
-                  className="shrink-0 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  disabled={submitting}
+                  onClick={() => updateValue("osOpen", !values.osOpen)}
+                  className={values.osOpen ? "workspace-toggle workspace-toggle-active" : "workspace-toggle"}
                 >
-                  <X className="size-5" />
-                </Button>
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmit} className="relative flex min-h-0 flex-1 flex-col">
-              <div className="custom-scrollbar scroll-stable flex-1 overflow-y-auto px-5 py-5 sm:px-6">
-                <section className="grid gap-3 md:grid-cols-3">
-                  {summaryItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <div key={item.label} className="dialog-panel-soft flex items-start gap-3 p-4">
-                        <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-slate-500 dark:bg-slate-900/70 dark:text-slate-300">
-                          <Icon className="h-[18px] w-[18px]" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
-                          <p className="mt-1 truncate text-sm font-semibold text-slate-950 dark:text-slate-50">{item.value}</p>
-                          <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{item.helper}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </section>
-
-                <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-                  <div className="space-y-4">
-                    <section className="dialog-panel">
-                      <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                        <h3 className={sectionTitleClass}>Contato e responsável</h3>
-                      </div>
-
-                      <div className="mt-4 grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2 md:col-span-2">
-                          <label className={fieldLabelClass}>Nome completo</label>
-                          <Input
-                            value={values.name}
-                            onChange={(e) => updateValue("name", e.target.value)}
-                            placeholder="Ex: João Silva"
-                            className={cn("h-12 rounded-2xl", errors.name && "border-rose-500 focus:ring-rose-500/15")}
-                          />
-                          {errors.name ? <p className="text-xs font-medium text-rose-500">{errors.name}</p> : null}
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className={fieldLabelClass}>Telefone / WhatsApp</label>
-                          <Input
-                            value={values.phone}
-                            onChange={(e) => updateValue("phone", e.target.value)}
-                            placeholder="(00) 00000-0000"
-                            className={cn("h-12 rounded-2xl", errors.phone && "border-rose-500 focus:ring-rose-500/15")}
-                          />
-                          {errors.phone ? <p className="text-xs font-medium text-rose-500">{errors.phone}</p> : null}
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className={fieldLabelClass}>Responsável</label>
-                          <select
-                            value={values.responsibleUserId}
-                            onChange={(e) => updateValue("responsibleUserId", e.target.value)}
-                            className={cn(selectClass, errors.responsibleUserId && "border-rose-500 focus:ring-rose-500/15")}
-                          >
-                            <option value="">Selecione um responsável</option>
-                            {assignees.map((assignee) => (
-                              <option key={assignee.id} value={assignee.id}>
-                                {assignee.name}
-                              </option>
-                            ))}
-                          </select>
-                          {errors.responsibleUserId ? <p className="text-xs font-medium text-rose-500">{errors.responsibleUserId}</p> : null}
-                        </div>
-                      </div>
-                    </section>
-
-                    <section className="dialog-panel">
-                      <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                        <h3 className={sectionTitleClass}>Contexto do caso</h3>
-                      </div>
-
-                      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                        <div className="space-y-2">
-                          <label className={fieldLabelClass}>Descrição do caso</label>
-                          <Textarea
-                            value={values.description}
-                            onChange={(e) => updateValue("description", e.target.value)}
-                            placeholder="Resumo do problema relatado, combinados e contexto operacional."
-                            className="min-h-[148px] rounded-[22px] border-slate-200/90 bg-white/95 p-4 dark:border-slate-700/60 dark:bg-slate-800/80"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className={fieldLabelClass}>Notas internas</label>
-                          <Textarea
-                            value={values.notes}
-                            onChange={(e) => updateValue("notes", e.target.value)}
-                            placeholder="Detalhes para a equipe, contexto técnico ou orientação de follow-up."
-                            className={cn(
-                              "min-h-[148px] rounded-[22px] border-slate-200/90 bg-white/95 p-4 dark:border-slate-700/60 dark:bg-slate-800/80",
-                              errors.notes && "border-rose-500",
-                            )}
-                          />
-                          {errors.notes ? <p className="text-xs font-medium text-rose-500">{errors.notes}</p> : null}
-                        </div>
-                      </div>
-                    </section>
+                  <div className="workspace-toggle-icon"><Info className="size-4" /></div>
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-slate-50">O.S. em aberto</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Mantém o caso na carga ativa da operação.</p>
                   </div>
+                </button>
 
-                  <div className="space-y-4">
-                    <section className="dialog-panel">
-                      <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                        <h3 className={sectionTitleClass}>Status, datas e operação</h3>
-                      </div>
-
-                      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                        <div className="space-y-2">
-                          <label className={fieldLabelClass}>Status atual</label>
-                          <select
-                            value={values.status}
-                            onChange={(e) => updateValue("status", e.target.value as ClientFormValues["status"])}
-                            className={selectClass}
-                          >
-                            {statusOptions.map((status) => (
-                              <option key={status} value={status}>
-                                {status}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className={fieldLabelClass}>Recorrências registradas</label>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={String(values.totalServices)}
-                            onChange={(e) => updateValue("totalServices", Math.max(1, Number(e.target.value || 1)))}
-                            placeholder="1"
-                            className={cn("h-12 rounded-2xl", errors.totalServices && "border-rose-500 focus:ring-rose-500/15")}
-                          />
-                          {errors.totalServices ? <p className="text-xs font-medium text-rose-500">{errors.totalServices}</p> : null}
-                        </div>
-
-                        <div className="space-y-2 sm:col-span-2">
-                          <label className={fieldLabelClass}>Número da O.S.</label>
-                          <Input
-                            value={values.osNumber}
-                            onChange={(e) => updateValue("osNumber", e.target.value)}
-                            placeholder="Ex: OS-12345"
-                            className={cn("h-12 rounded-2xl", errors.osNumber && "border-rose-500 focus:ring-rose-500/15")}
-                          />
-                          {errors.osNumber ? <p className="text-xs font-medium text-rose-500">{errors.osNumber}</p> : null}
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className={fieldLabelClass}>Último contato</label>
-                          <div className="relative">
-                            <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                            <Input
-                              type="datetime-local"
-                              value={values.lastContactAt}
-                              onChange={(e) => updateValue("lastContactAt", e.target.value)}
-                              className="h-12 rounded-2xl pl-10"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className={fieldLabelClass}>Próxima ação</label>
-                          <div className="relative">
-                            <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                            <Input
-                              type="datetime-local"
-                              value={values.nextActionAt}
-                              onChange={(e) => updateValue("nextActionAt", e.target.value)}
-                              className={cn("h-12 rounded-2xl pl-10", errors.nextActionAt && "border-rose-500 focus:ring-rose-500/15")}
-                            />
-                          </div>
-                          {errors.nextActionAt ? <p className="text-xs font-medium text-rose-500">{errors.nextActionAt}</p> : null}
-                        </div>
-                      </div>
-
-                      <div className="mt-4 grid gap-3">
-                        {operationToggles.map((item) => {
-                          const Icon = item.icon;
-                          return (
-                            <button
-                              key={item.key}
-                              type="button"
-                              onClick={item.onClick}
-                              className={cn(
-                                "flex items-center justify-between gap-3 rounded-[20px] border px-4 py-3 text-left transition-all",
-                                item.tone === "indigo" && item.active && "border-indigo-200 bg-indigo-50/85 dark:border-indigo-500/25 dark:bg-indigo-500/12",
-                                item.tone === "emerald" && item.active && "border-emerald-200 bg-emerald-50/85 dark:border-emerald-500/25 dark:bg-emerald-500/12",
-                                !item.active && "border-slate-200/80 bg-white/88 dark:border-slate-700/50 dark:bg-slate-900/48",
-                              )}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className={cn(
-                                    "flex h-10 w-10 items-center justify-center rounded-2xl",
-                                    item.tone === "indigo" && item.active && "bg-indigo-600 text-white",
-                                    item.tone === "emerald" && item.active && "bg-emerald-600 text-white",
-                                    !item.active && "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300",
-                                  )}
-                                >
-                                  <Icon className="h-[18px] w-[18px]" />
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="font-medium text-slate-950 dark:text-slate-50">{item.label}</p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400">{item.helper}</p>
-                                </div>
-                              </div>
-                              <div
-                                className={cn(
-                                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all",
-                                  item.tone === "indigo" && item.active && "border-indigo-600 bg-indigo-600",
-                                  item.tone === "emerald" && item.active && "border-emerald-600 bg-emerald-600",
-                                  !item.active && "border-slate-300 dark:border-slate-600",
-                                )}
-                              >
-                                {item.active ? <CheckCircle2 className="h-5 w-5 text-white" /> : null}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <div className="mt-4 dialog-panel-soft p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-slate-500 dark:bg-slate-900/70 dark:text-slate-300">
-                            <UserRound className="h-[18px] w-[18px]" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Responsável atual</p>
-                            <p className="truncate text-sm font-medium text-slate-950 dark:text-slate-50">
-                              {selectedAssignee?.name ?? "Ainda não selecionado"}
-                            </p>
-                            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                              {selectedAssignee?.email ?? "Escolha um usuário para assumir o caso."}
-                            </p>
-                          </div>
-                        </div>
-                        {client?.updatedAt ? (
-                          <div className="mt-3 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                            <Clock3 className="h-[14px] w-[14px]" />
-                            Última atualização em {formatDateLabel(client.updatedAt)}
-                          </div>
-                        ) : null}
-                      </div>
-                    </section>
+                <button
+                  type="button"
+                  onClick={() => updateValue("resolved", !values.resolved)}
+                  className={values.resolved ? "workspace-toggle workspace-toggle-success" : "workspace-toggle"}
+                >
+                  <div className="workspace-toggle-icon"><CheckCircle2 className="size-4" /></div>
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-slate-50">Caso resolvido</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Fecha o ciclo atual sem sair da tela.</p>
                   </div>
-                </div>
+                </button>
               </div>
+            </section>
 
-              <div className="border-t border-slate-100/90 bg-white/94 px-5 py-4 backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-950/72 sm:px-6">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    {mode === "create"
-                      ? "Fluxo mais direto, com um único shell forte e menos caixas disputando atenção entre si."
-                      : "Edição rápida com leitura mais limpa e menos peso visual dentro do modal."}
-                  </p>
-
-                  <div className="flex gap-3 sm:justify-end">
-                    <Button type="button" variant="outline" className="flex-1 sm:flex-none" onClick={onClose} disabled={submitting}>
-                      Cancelar
-                    </Button>
-                    <Button type="submit" className="flex-1 sm:flex-none" disabled={submitting}>
-                      {submitting ? (
-                        <span className="flex items-center gap-2">
-                          <span className="size-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />
-                          Salvando...
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          <Save className="h-4 w-4" />
-                          {mode === "create" ? "Cadastrar cliente" : "Salvar alterações"}
-                        </span>
-                      )}
-                    </Button>
-                  </div>
-                </div>
+            <section className="workspace-group workspace-group-muted">
+              <div className="flex items-center gap-2">
+                <Clock3 className="size-4 text-slate-400" />
+                <h3 className="workspace-group-title">Leitura operacional</h3>
               </div>
-            </form>
-          </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
+              <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                {values.nextActionAt
+                  ? `A próxima ação está marcada para ${formatDateLabel(values.nextActionAt)}.`
+                  : "Ainda não há próxima ação registrada para este cliente."}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                {values.resolved
+                  ? "O cliente será salvo como resolvido; a O.S. deixa de contar na carga ativa."
+                  : values.osOpen
+                    ? "Este cadastro continuará sinalizando O.S. aberta na carteira."
+                    : "O cadastro seguirá como acompanhamento ativo sem O.S. em aberto."}
+              </p>
+            </section>
+          </div>
+        </div>
+
+        <div className="workspace-footer">
+          <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">
+            Cadastro aberto na própria página para evitar fundo bloqueado, competição visual e sobreposição desnecessária.
+          </p>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <Button type="button" variant="outline" className="h-11 rounded-2xl px-5" onClick={onClose} disabled={submitting}>
+              Cancelar
+            </Button>
+            <Button type="submit" className="h-11 rounded-2xl px-5">
+              <Save className="size-4" />
+              {submitting ? "Salvando..." : mode === "create" ? "Cadastrar cliente" : "Salvar alterações"}
+            </Button>
+          </div>
+        </div>
+      </form>
+    </section>
   );
 }

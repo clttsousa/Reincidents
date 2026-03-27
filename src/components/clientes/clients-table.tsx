@@ -13,7 +13,7 @@ import {
   SlidersHorizontal,
   UserRound,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ClientFormSheet } from "@/components/clientes/client-form-sheet";
 import { ClientTimelineSheet } from "@/components/clientes/client-timeline-sheet";
@@ -120,6 +120,42 @@ function MetricCard({
 function LoadingState() {
   return (
     <div className="space-y-6 animate-enter">
+      {workspaceOpen ? (
+        <div ref={workspaceRef} className="space-y-4 scroll-mt-28">
+          <section className="page-panel-muted flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="section-heading">Área ativa da carteira</p>
+              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                Cadastro e leitura do cliente abrem direto na tela principal, sem bloquear o restante da página e sem depender de overlay.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              className="h-11 rounded-2xl px-5"
+              onClick={() => {
+                setSheetOpen(false);
+                setTimelineOpen(false);
+              }}
+            >
+              Fechar painel
+            </Button>
+          </section>
+
+          {sheetOpen ? (
+            <ClientFormSheet
+              open={sheetOpen}
+              mode={sheetMode}
+              client={selectedClient}
+              assignees={assignees}
+              submitting={formSubmitting}
+              onClose={() => setSheetOpen(false)}
+              onSubmit={handleSave}
+            />
+          ) : null}
+
+          {timelineOpen ? <ClientTimelineSheet open={timelineOpen} client={selectedClient} onClose={() => setTimelineOpen(false)} /> : null}
+        </div>
+      ) : null}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="skeleton-shimmer h-32 rounded-[24px]" />
@@ -156,6 +192,8 @@ export function ClientsTable() {
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [copiedClientId, setCopiedClientId] = useState<string | null>(null);
   const [pendingStatusChange, setPendingStatusChange] = useState<{ clientId: string; nextStatus: ClientStatus } | null>(null);
+  const workspaceRef = useRef<HTMLDivElement | null>(null);
+  const workspaceOpen = sheetOpen || timelineOpen;
 
   useEffect(() => {
     try {
@@ -215,6 +253,11 @@ export function ClientsTable() {
     const query = nextParams.toString();
     router.replace(query ? `${pathname}?${query}` : pathname);
   }, [pathname, router, searchParams]);
+
+  useEffect(() => {
+    if (!workspaceOpen) return;
+    requestAnimationFrame(() => workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [workspaceOpen, sheetMode, timelineOpen, selectedClient?.id]);
 
   const filteredClients = useMemo(() => {
     let result = [...clients];
@@ -298,18 +341,21 @@ export function ClientsTable() {
   };
 
   const openCreateSheet = () => {
+    setTimelineOpen(false);
     setSheetMode("create");
     setSelectedClient(null);
     setSheetOpen(true);
   };
 
   const openEditSheet = (client: ClientRecord) => {
+    setTimelineOpen(false);
     setSheetMode("edit");
     setSelectedClient(client);
     setSheetOpen(true);
   };
 
   const openTimeline = (client: ClientRecord) => {
+    setSheetOpen(false);
     setSelectedClient(client);
     setTimelineOpen(true);
   };
@@ -342,6 +388,42 @@ export function ClientsTable() {
 
   return (
     <div className="space-y-6 animate-enter">
+      {workspaceOpen ? (
+        <div ref={workspaceRef} className="space-y-4 scroll-mt-28">
+          <section className="page-panel-muted flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="section-heading">Área ativa da carteira</p>
+              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                Cadastro e leitura do cliente abrem direto na tela principal, sem bloquear o restante da página e sem depender de overlay.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              className="h-11 rounded-2xl px-5"
+              onClick={() => {
+                setSheetOpen(false);
+                setTimelineOpen(false);
+              }}
+            >
+              Fechar painel
+            </Button>
+          </section>
+
+          {sheetOpen ? (
+            <ClientFormSheet
+              open={sheetOpen}
+              mode={sheetMode}
+              client={selectedClient}
+              assignees={assignees}
+              submitting={formSubmitting}
+              onClose={() => setSheetOpen(false)}
+              onSubmit={handleSave}
+            />
+          ) : null}
+
+          {timelineOpen ? <ClientTimelineSheet open={timelineOpen} client={selectedClient} onClose={() => setTimelineOpen(false)} /> : null}
+        </div>
+      ) : null}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
         <MetricCard label="Total" value={String(stats.total)} helper="Carteira completa" accent="blue" />
         <MetricCard label="Aguardando" value={String(stats.waiting)} helper="Precisa de contato" accent="amber" />
@@ -753,17 +835,6 @@ export function ClientsTable() {
           </section>
         </div>
       </div>
-
-      <ClientFormSheet
-        open={sheetOpen}
-        mode={sheetMode}
-        client={selectedClient}
-        assignees={assignees}
-        submitting={formSubmitting}
-        onClose={() => setSheetOpen(false)}
-        onSubmit={handleSave}
-      />
-      <ClientTimelineSheet open={timelineOpen} client={selectedClient} onClose={() => setTimelineOpen(false)} />
 
       {pendingStatusChange && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm animate-in fade-in duration-200">

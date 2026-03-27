@@ -139,6 +139,98 @@
     box-shadow: 0 32px 72px -42px rgba(15, 23, 42, 0.66);
   }
 
+
+
+  .workspace-shell {
+    border-radius: 2rem;
+    padding: 1.25rem;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.985) 0%, rgba(248, 250, 252, 0.96) 100%);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    box-shadow: 0 18px 40px -34px rgba(15, 23, 42, 0.18);
+  }
+
+  @media (min-width: 640px) {
+    .workspace-shell {
+      padding: 1.5rem;
+    }
+  }
+
+  .workspace-header {
+    @apply flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between;
+  }
+
+  .workspace-divider {
+    height: 1px;
+    margin-block: 1.25rem;
+    background: rgba(148, 163, 184, 0.14);
+  }
+
+  .workspace-group {
+    border-radius: 1.5rem;
+    padding: 1.25rem;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    background: rgba(255, 255, 255, 0.54);
+  }
+
+  .workspace-group-muted {
+    background: rgba(248, 250, 252, 0.78);
+  }
+
+  .workspace-group-title {
+    @apply text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400;
+  }
+
+  .workspace-field-label {
+    @apply text-sm font-medium text-slate-700 dark:text-slate-300;
+  }
+
+  .workspace-select {
+    @apply h-12 w-full rounded-2xl border border-slate-200/90 bg-white/95 px-4 text-sm text-slate-950 outline-none transition-all focus:border-blue-400/70 focus:ring-4 focus:ring-blue-500/12 dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-slate-100 dark:focus:border-indigo-500/60 dark:focus:ring-indigo-500/15;
+  }
+
+  .workspace-stat {
+    @apply flex items-start gap-3 rounded-[22px] border border-slate-200/82 bg-slate-50/76 p-4 dark:border-slate-700/50 dark:bg-slate-800/34;
+  }
+
+  .workspace-stat-icon {
+    @apply flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-slate-500 dark:bg-slate-900/70 dark:text-slate-300;
+  }
+
+  .workspace-toggle {
+    @apply flex items-start gap-3 rounded-[22px] border border-slate-200/85 bg-white/70 p-4 text-left transition hover:border-slate-300 dark:border-slate-700/50 dark:bg-slate-900/40 dark:hover:border-slate-600;
+  }
+
+  .workspace-toggle-active {
+    @apply border-indigo-200 bg-indigo-50/70 dark:border-indigo-500/30 dark:bg-indigo-500/10;
+  }
+
+  .workspace-toggle-success {
+    @apply border-emerald-200 bg-emerald-50/70 dark:border-emerald-500/30 dark:bg-emerald-500/10;
+  }
+
+  .workspace-toggle-icon {
+    @apply mt-0.5 flex h-9 w-9 items-center justify-center rounded-2xl bg-white text-slate-500 dark:bg-slate-950/70 dark:text-slate-300;
+  }
+
+  .workspace-footer {
+    @apply flex flex-col gap-4 border-t border-slate-200/80 pt-4 dark:border-slate-800/60 md:flex-row md:items-center md:justify-between;
+  }
+
+  .dark .workspace-shell {
+    background: linear-gradient(180deg, rgba(9, 15, 30, 0.94) 0%, rgba(15, 23, 42, 0.9) 100%);
+    border-color: rgba(148, 163, 184, 0.16);
+    box-shadow: 0 24px 56px -42px rgba(0, 0, 0, 0.52);
+  }
+
+  .dark .workspace-group {
+    background: rgba(15, 23, 42, 0.44);
+    border-color: rgba(148, 163, 184, 0.12);
+  }
+
+  .dark .workspace-group-muted {
+    background: rgba(15, 23, 42, 0.62);
+  }
+
   .dialog-backdrop {
     background: rgba(8, 15, 30, 0.58);
     backdrop-filter: blur(14px) saturate(1.05);
