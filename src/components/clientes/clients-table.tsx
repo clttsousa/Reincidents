@@ -134,7 +134,7 @@ export function ClientsTable() {
   const { pushToast } = useToast();
 
   const [searchInput, setSearchInput] = useState(defaultFilters.search);
-  const [debouncedSearch] = useDebouncedValue(searchInput, 300);
+  const debouncedSearch = useDebouncedValue(searchInput, 300);
   const [activeFilter, setActiveFilter] = useState<PersistedFilters["activeFilter"]>(defaultFilters.activeFilter);
   const [assigneeFilter, setAssigneeFilter] = useState(defaultFilters.assigneeFilter);
   const [criticalOnly, setCriticalOnly] = useState(defaultFilters.criticalOnly);
