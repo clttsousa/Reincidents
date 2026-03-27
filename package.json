@@ -1,6 +1,6 @@
 {
   "name": "recorrenciaos",
-  "version": "4.9.0",
+  "version": "5.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
