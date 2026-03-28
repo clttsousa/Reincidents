@@ -27,7 +27,7 @@ export default async function ConfiguracoesPage() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <section className="surface-card section-shell animate-enter">
+      <section className="surface-card animate-enter rounded-[30px] p-4 sm:p-6 lg:p-7">
         <p className="section-heading">Administração</p>
         <h1 className="mt-3 page-title">Configurações e equipe</h1>
         <p className="page-description sm:max-w-3xl">

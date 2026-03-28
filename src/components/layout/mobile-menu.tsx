@@ -90,7 +90,7 @@ export function MobileMenu({ items, user }: MobileMenuProps) {
           {/* Backdrop */}
           <button
             aria-label="Fechar menu"
-            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity"
+            className="absolute inset-0 bg-slate-950/60 transition-opacity"
             onClick={() => setOpen(false)}
             type="button"
           />
@@ -195,7 +195,7 @@ export function MobileMenu({ items, user }: MobileMenuProps) {
 
             {/* Footer */}
             <div className="mt-6 rounded-[20px] border border-white/6 bg-white/3 px-4 py-3">
-              <p className="text-[11px] text-slate-500">RecorrênciaOS v5.6.0 · Premium</p>
+              <p className="text-[11px] text-slate-500">RecorrênciaOS v6.1.0 · Premium</p>
             </div>
           </div>
         </div>

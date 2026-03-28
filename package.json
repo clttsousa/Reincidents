@@ -1,6 +1,6 @@
 {
   "name": "recorrenciaos",
-  "version": "5.6.0",
+  "version": "6.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,7 +9,9 @@
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --max-warnings=0",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
     "typecheck": "tsc --noEmit",
-    "verify:predeploy": "npm run typecheck && npm run build"
+    "verify:predeploy": "npm run typecheck && npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
@@ -34,6 +36,10 @@
     "eslint-config-next": "^15.0.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
+    "jsdom": "^25.0.1",
+    "vitest": "^2.1.8"
   }
 }

@@ -15,7 +15,7 @@ export default function RegisterPage() {
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-3 py-5 sm:px-4 sm:py-10">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_28%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.12),transparent_28%)]" />
       <div className="relative grid w-full max-w-6xl gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-        <section className="hidden rounded-[34px] border border-white/70 bg-white/72 p-8 shadow-[0_32px_80px_-48px_rgba(15,23,42,0.35)] backdrop-blur lg:block">
+        <section className="hidden rounded-[34px] border border-white/70 bg-white/72 p-8 shadow-[0_32px_80px_-48px_rgba(15,23,42,0.35)] lg:block">
           <BrandLogo className="mb-8" />
           <div className="max-w-xl">
             <p className="section-heading">Novo acesso</p>
@@ -26,7 +26,7 @@ export default function RegisterPage() {
             {highlights.map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.title} className="surface-muted rounded-[24px] border p-4">
+                <div key={item.title} className="surface-inset rounded-[24px] p-4">
                   <div className="flex items-start gap-3">
                     <div className="flex size-11 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-[0_18px_36px_-28px_rgba(15,23,42,0.3)]">
                       <Icon className="size-5" />

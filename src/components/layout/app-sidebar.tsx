@@ -40,7 +40,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
         </Link>
 
         {/* User card */}
-        <div className="mt-5 rounded-[24px] border border-white/8 bg-white/5 p-4 backdrop-blur-sm">
+        <div className="mt-5 rounded-[24px] border border-white/8 bg-white/5 p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-[15px] font-semibold text-white">
@@ -68,7 +68,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
 
         {/* Footer */}
         <div className="mt-4 rounded-[20px] border border-white/6 bg-white/3 px-4 py-3">
-          <p className="text-[11px] text-slate-500">RecorrênciaOS v5.6.0</p>
+          <p className="text-[11px] text-slate-500">RecorrênciaOS v6.1.0</p>
           <p className="mt-0.5 text-[11px] text-slate-600">Premium · Operação contínua</p>
         </div>
       </div>

@@ -361,7 +361,7 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
         <SummaryCard title="Inativos" value={String(metrics.inactive)} description="Contas sem acesso operacional até serem reativadas." icon={UserX} tone="warning" />
       </section>
 
-      <section className="surface-card section-shell space-y-4 sm:space-y-5">
+      <section className="surface-card space-y-4 rounded-[30px] p-4 sm:p-6 lg:p-7 sm:space-y-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-1.5">
             <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 dark:text-slate-500">
@@ -642,7 +642,7 @@ export function UserManagementPanel({ currentUserId }: UserManagementPanelProps)
       </section>
 
       {pendingAction ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-3 backdrop-blur-sm sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-3 sm:items-center sm:p-4">
           <div className="w-full max-w-lg rounded-[28px] border border-white/80 bg-white p-5 shadow-2xl sm:p-6">
             <div className="flex items-start gap-3">
               <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 dark:text-slate-300">

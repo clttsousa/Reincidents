@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  AlertTriangle,
   CheckCircle2,
   Copy,
   LayoutGrid,
@@ -17,12 +16,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ClientFormSheet } from "@/components/clientes/client-form-sheet";
 import { ClientTimelineSheet } from "@/components/clientes/client-timeline-sheet";
+import { ClientStatusConfirmDialog, type PendingStatusChange } from "@/components/clientes/client-status-confirm-dialog";
+import { ClientsListStateBanner } from "@/components/clientes/clients-list-state-banner";
+import { ClientsLoadingState, ClientsMetricsGrid } from "@/components/clientes/clients-metrics-grid";
 import { useClients } from "@/components/providers/clients-provider";
 import { useToast } from "@/components/providers/toast-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   buildWhatsappLink,
   formatDateLabel,
@@ -38,7 +39,7 @@ import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import type { ClientRecord, ClientStatus, ClientFormValues } from "@/types/mock";
 
-const FILTERS_STORAGE_KEY = "recorrenciaos-client-filters-v52";
+const FILTERS_STORAGE_KEY = "recorrenciaos-client-filters-v58";
 
 const quickFilters: Array<{ label: string; value: "Todos" | ClientStatus }> = [
   { label: "Todos", value: "Todos" },
@@ -82,56 +83,25 @@ const sortOptions: Array<{ label: string; value: SortOption }> = [
   { label: "Críticos primeiro", value: "critical-first" },
 ];
 
-function MetricCard({
-  label,
-  value,
-  helper,
-  accent = "blue",
-}: {
-  label: string;
-  value: string;
-  helper?: string;
-  accent?: string;
-}) {
-  const accentClasses: Record<string, string> = {
-    blue: "stat-accent-blue",
-    emerald: "stat-accent-emerald",
-    amber: "stat-accent-amber",
-    rose: "stat-accent-rose",
-    violet: "stat-accent-violet",
-  };
-
-  return (
-    <Card className="overflow-hidden rounded-[26px] border-none">
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{label}</p>
-          <div className={cn("flex size-9 items-center justify-center rounded-2xl", accentClasses[accent])}>
-            <span className="size-2 rounded-full bg-current" />
-          </div>
-        </div>
-        <p className="mt-3 text-3xl font-bold tracking-tight text-slate-950 dark:text-slate-50">{value}</p>
-        {helper ? <p className="mt-1.5 text-xs leading-5 text-slate-400 dark:text-slate-500">{helper}</p> : null}
-      </CardContent>
-    </Card>
-  );
-}
-
-function LoadingState() {
-  return (
-    <div className="space-y-6 animate-enter">
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="skeleton-shimmer h-32 rounded-[24px]" />
-        ))}
-      </div>
-      <div className="skeleton-shimmer h-[560px] rounded-[30px]" />
-    </div>
-  );
-}
-
 export function ClientsTable() {
-  const { clients, stats, loading, updateClientStatus, updateClient, addClient, assignees } = useClients();
+  const {
+    clients,
+    stats,
+    loading,
+    listRefreshing,
+    errorMessage,
+    staleData,
+    totalClients,
+    totalPages,
+    page,
+    updateClientStatus,
+    updateClient,
+    addClient,
+    assignees,
+    applyListQuery,
+    setPage,
+    refreshClients,
+  } = useClients();
   const { pushToast } = useToast();
 
   const searchParams = useSearchParams();
@@ -155,15 +125,14 @@ export function ClientsTable() {
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [copiedClientId, setCopiedClientId] = useState<string | null>(null);
-  const [pendingStatusChange, setPendingStatusChange] = useState<{ clientId: string; nextStatus: ClientStatus } | null>(null);
+  const [pendingStatusChange, setPendingStatusChange] = useState<PendingStatusChange | null>(null);
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const workspaceOpen = sheetOpen || timelineOpen;
 
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(FILTERS_STORAGE_KEY);
-      if (!saved) return;
-      const parsed = JSON.parse(saved) as Partial<PersistedFilters>;
+      const parsed = saved ? (JSON.parse(saved) as Partial<PersistedFilters>) : {};
       setSearchInput(parsed.search ?? defaultFilters.search);
       setActiveFilter(parsed.activeFilter ?? defaultFilters.activeFilter);
       setAssigneeFilter(parsed.assigneeFilter ?? defaultFilters.assigneeFilter);
@@ -198,6 +167,7 @@ export function ClientsTable() {
     const onQuickCreate = () => {
       setSheetMode("create");
       setSelectedClient(null);
+      setTimelineOpen(false);
       setSheetOpen(true);
     };
 
@@ -206,10 +176,29 @@ export function ClientsTable() {
   }, []);
 
   useEffect(() => {
+    const requestedView = searchParams.get("view");
+    if (!requestedView) return;
+
+    if (requestedView === "waiting") setActiveFilter("Aguardando contato");
+    if (requestedView === "os") setActiveFilter("O.S. aberta");
+    if (requestedView === "resolved") setActiveFilter("Resolvido");
+    if (requestedView === "no-return") setActiveFilter("Sem retorno");
+    if (requestedView === "critical") setCriticalOnly(true);
+    if (requestedView === "stale") setStaleOnly(true);
+    if (requestedView === "unassigned") setAssigneeFilter("Equipe");
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("view");
+    const query = nextParams.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname);
+  }, [pathname, router, searchParams]);
+
+  useEffect(() => {
     if (searchParams.get("create") !== "1") return;
 
     setSheetMode("create");
     setSelectedClient(null);
+    setTimelineOpen(false);
     setSheetOpen(true);
 
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -219,51 +208,24 @@ export function ClientsTable() {
   }, [pathname, router, searchParams]);
 
   useEffect(() => {
+    applyListQuery({
+      search: debouncedSearch,
+      activeFilter,
+      assigneeFilter,
+      criticalOnly,
+      staleOnly,
+      osFilter,
+      resolvedFilter,
+      sortBy,
+    });
+  }, [activeFilter, applyListQuery, assigneeFilter, criticalOnly, debouncedSearch, osFilter, resolvedFilter, sortBy, staleOnly]);
+
+  useEffect(() => {
     if (!workspaceOpen) return;
     requestAnimationFrame(() => workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }, [workspaceOpen, sheetMode, timelineOpen, selectedClient?.id]);
 
-  const filteredClients = useMemo(() => {
-    let result = [...clients];
-
-    if (debouncedSearch) {
-      const term = debouncedSearch.toLowerCase();
-      result = result.filter(
-        (c) =>
-          c.name.toLowerCase().includes(term) ||
-          c.phone.includes(term) ||
-          c.description?.toLowerCase().includes(term) ||
-          c.assignee.toLowerCase().includes(term),
-      );
-    }
-
-    if (activeFilter !== "Todos") result = result.filter((c) => c.status === activeFilter);
-    if (assigneeFilter !== "Todos") result = result.filter((c) => c.assignee === assigneeFilter);
-    if (criticalOnly) result = result.filter((c) => isCriticalClient(c));
-    if (staleOnly) result = result.filter((c) => isStaleClient(c));
-    if (osFilter === "Com O.S.") result = result.filter((c) => c.osOpen);
-    if (osFilter === "Sem O.S.") result = result.filter((c) => !c.osOpen);
-    if (resolvedFilter === "Resolvidos") result = result.filter((c) => c.resolved);
-    if (resolvedFilter === "Pendentes") result = result.filter((c) => !c.resolved);
-
-    result.sort((a, b) => {
-      if (sortBy === "name-asc") return a.name.localeCompare(b.name);
-      if (sortBy === "services-desc") return b.totalServices - a.totalServices;
-      if (sortBy === "next-action-asc") {
-        const aTime = a.nextActionAt ? new Date(a.nextActionAt).getTime() : Number.POSITIVE_INFINITY;
-        const bTime = b.nextActionAt ? new Date(b.nextActionAt).getTime() : Number.POSITIVE_INFINITY;
-        return aTime - bTime;
-      }
-      if (sortBy === "critical-first") {
-        const aCrit = isCriticalClient(a) ? 1 : 0;
-        const bCrit = isCriticalClient(b) ? 1 : 0;
-        return bCrit - aCrit || new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-      }
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
-
-    return result;
-  }, [clients, debouncedSearch, activeFilter, assigneeFilter, criticalOnly, staleOnly, osFilter, resolvedFilter, sortBy]);
+  const filteredClients = clients;
 
   const activeFilterCount = [
     debouncedSearch.length > 0,
@@ -294,6 +256,8 @@ export function ClientsTable() {
     setOsFilter(defaultFilters.osFilter);
     setResolvedFilter(defaultFilters.resolvedFilter);
     setSortBy(defaultFilters.sortBy);
+    setDensity(defaultFilters.density);
+    setPage(1);
     pushToast({ tone: "info", title: "Filtros limpos", description: "A visão voltou para a configuração padrão." });
   };
 
@@ -324,6 +288,36 @@ export function ClientsTable() {
     setTimelineOpen(true);
   };
 
+
+  const requiresStatusConfirmation = (client: ClientRecord, nextStatus: ClientStatus) => {
+    if (nextStatus !== "Resolvido") return null;
+    if (client.osOpen) {
+      return "Este cliente ainda possui O.S. aberta. Confirme que o atendimento pode ser encerrado antes de marcar como resolvido.";
+    }
+    if (client.totalServices >= 8) {
+      return "Este cliente tem alta recorrência. Vale confirmar que o caso realmente foi encerrado para não perder contexto operacional.";
+    }
+    return null;
+  };
+
+  const handleStatusSelect = (client: ClientRecord, nextStatus: ClientStatus) => {
+    if (client.status === nextStatus) return;
+    const reason = requiresStatusConfirmation(client, nextStatus);
+
+    if (reason) {
+      setPendingStatusChange({
+        clientId: client.id,
+        clientName: client.name,
+        currentStatus: client.status,
+        nextStatus,
+        reason,
+      });
+      return;
+    }
+
+    void updateClientStatus(client.id, nextStatus);
+  };
+
   const handleSave = async (values: ClientFormValues): Promise<boolean> => {
     setFormSubmitting(true);
     try {
@@ -345,7 +339,7 @@ export function ClientsTable() {
     setPendingStatusChange(null);
   };
 
-  if (loading) return <LoadingState />;
+  if (loading) return <ClientsLoadingState />;
 
   const rowPaddingClass = density === "compact" ? "py-3" : "py-[18px]";
   const rowMetaGap = density === "compact" ? "mt-2" : "mt-2.5";
@@ -354,7 +348,7 @@ export function ClientsTable() {
     <div className="space-y-6 animate-enter">
       {workspaceOpen ? (
         <div ref={workspaceRef} className="space-y-4 scroll-mt-28">
-          <section className="page-panel-muted flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <section className="surface-subtle flex flex-col gap-3 rounded-[24px] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="section-heading">Área ativa da carteira</p>
               <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
@@ -388,13 +382,9 @@ export function ClientsTable() {
           {timelineOpen ? <ClientTimelineSheet open={timelineOpen} client={selectedClient} onClose={() => setTimelineOpen(false)} /> : null}
         </div>
       ) : null}
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
-        <MetricCard label="Total" value={String(stats.total)} helper="Carteira completa" accent="blue" />
-        <MetricCard label="Aguardando" value={String(stats.waiting)} helper="Precisa de contato" accent="amber" />
-        <MetricCard label="O.S. aberta" value={String(stats.os)} helper="Em andamento" accent="violet" />
-        <MetricCard label="Resolvidos" value={String(stats.solved)} helper="Ciclo concluído" accent="emerald" />
-        <MetricCard label="Sem retorno" value={String(stats.noReturn)} helper="Aguardando resposta" accent="rose" />
-      </div>
+      {errorMessage ? <ClientsListStateBanner message={errorMessage} staleData={staleData} refreshing={listRefreshing} onRetry={() => void refreshClients()} /> : null}
+
+      <ClientsMetricsGrid total={stats.total} waiting={stats.waiting} os={stats.os} solved={stats.solved} noReturn={stats.noReturn} />
 
       <div className="surface-card rounded-[34px] border-none p-1 shadow-premium">
         <div className="grid gap-0 lg:grid-cols-[300px_minmax(0,1fr)]">
@@ -413,14 +403,14 @@ export function ClientsTable() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 <Input
-                  placeholder="Buscar cliente, telefone ou responsável"
+                  placeholder="Buscar cliente, telefone, O.S. ou responsável"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   className="h-11 rounded-2xl pl-10"
                 />
               </div>
 
-              <div className="surface-muted rounded-[24px] p-4">
+              <div className="surface-inset rounded-[24px] p-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Resumo da visão</p>
                   <Badge variant="outline">{summary.visible}</Badge>
@@ -527,7 +517,7 @@ export function ClientsTable() {
                 </div>
               </div>
 
-              <div className="space-y-3 rounded-[24px] border border-slate-200/90 bg-slate-50/85 p-4 dark:border-slate-700/50 dark:bg-slate-800/40">
+              <div className="surface-inset space-y-3 rounded-[24px] p-4">
                 <label className="flex cursor-pointer items-center gap-3 group">
                   <div
                     className={cn(
@@ -568,17 +558,17 @@ export function ClientsTable() {
           </aside>
 
           <section className="flex min-w-0 flex-col p-2 lg:p-3">
-            <div className="surface-muted rounded-[28px] px-4 py-4 sm:px-5">
+            <div className="surface-subtle rounded-[28px] px-4 py-4 sm:px-5">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <div>
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="rounded-xl px-2.5 py-1 font-bold text-indigo-600 dark:text-indigo-400">
                       {filteredClients.length}
                     </Badge>
-                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Clientes na visão atual</p>
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Clientes nesta página · {totalClients} no total</p>
                   </div>
                   <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                    Visual premium com leitura mais limpa de status, responsáveis, recorrência e próximas ações.
+                    Busca e paginação agora rodam no Supabase para manter a carteira estável mesmo com bases maiores.
                   </p>
                 </div>
 
@@ -591,14 +581,14 @@ export function ClientsTable() {
               </div>
             </div>
 
-            <div className="mt-3 flex min-h-[620px] flex-1 flex-col overflow-hidden rounded-[30px] bg-white/92 dark:bg-slate-900/55">
+            <div className="surface-card mt-3 flex min-h-[620px] flex-1 flex-col overflow-hidden rounded-[30px]">
               <div className="flex flex-col gap-3 border-b border-slate-100/90 px-4 py-4 dark:border-slate-800/50 sm:px-5 xl:flex-row xl:items-center xl:justify-between">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="rounded-lg px-2 py-1 font-bold text-indigo-600 dark:text-indigo-400">
                       {activeFilterCount}
                     </Badge>
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Filtros ativos</p>
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Filtros ativos {listRefreshing ? "· sincronizando" : ""}</p>
                   </div>
                   <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                     {summary.critical} críticos · {summary.stale} atrasados · {summary.noOwner} sem dono na lista atual.
@@ -651,7 +641,7 @@ export function ClientsTable() {
                   </div>
                 ) : (
                   <table className="w-full min-w-[980px] border-separate border-spacing-0 text-left">
-                    <thead className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm dark:bg-slate-900/95">
+                    <thead className="sticky top-0 z-10 bg-white/95  dark:bg-slate-900/95">
                       <tr>
                         <th className="px-6 py-4 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100 dark:border-slate-800/50">Cliente</th>
                         <th className="px-5 py-4 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100 dark:border-slate-800/50">Status</th>
@@ -708,7 +698,7 @@ export function ClientsTable() {
                             <td className={cn("px-5 align-top", rowPaddingClass)}>
                               <select
                                 value={client.status}
-                                onChange={(e) => setPendingStatusChange({ clientId: client.id, nextStatus: e.target.value as ClientStatus })}
+                                onChange={(e) => handleStatusSelect(client, e.target.value as ClientStatus)}
                                 className={cn(
                                   "h-10 rounded-xl border-none px-3 text-[11px] font-bold uppercase tracking-[0.14em] outline-none cursor-pointer transition-all",
                                   statusStyles[client.status],
@@ -795,32 +785,27 @@ export function ClientsTable() {
                   </table>
                 )}
               </div>
+
+              <div className="flex flex-col gap-3 border-t border-slate-100/90 px-4 py-4 dark:border-slate-800/50 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Página <span className="font-semibold text-slate-900 dark:text-slate-100">{page}</span> de <span className="font-semibold text-slate-900 dark:text-slate-100">{totalPages}</span> · {totalClients} clientes encontrados
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="h-10 rounded-2xl" onClick={() => setPage(page - 1)} disabled={page <= 1 || listRefreshing}>
+                    Anterior
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-10 rounded-2xl" onClick={() => setPage(page + 1)} disabled={page >= totalPages || listRefreshing}>
+                    Próxima
+                  </Button>
+                </div>
+              </div>
             </div>
           </section>
         </div>
       </div>
 
-      {pendingStatusChange && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="surface-card w-full max-w-md rounded-[32px] border-none p-8 shadow-2xl animate-scale-in">
-            <div className="mb-6 flex size-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-300">
-              <AlertTriangle className="size-7" />
-            </div>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-50">Confirmar alteração?</h3>
-            <p className="mt-2 leading-relaxed text-slate-500 dark:text-slate-400">
-              Você está alterando o status para <span className="font-bold text-slate-900 dark:text-slate-100">{pendingStatusChange.nextStatus}</span>. Esta ação será registrada no histórico do cliente.
-            </p>
-            <div className="mt-8 flex gap-3">
-              <Button variant="outline" className="h-12 flex-1 rounded-2xl" onClick={() => setPendingStatusChange(null)}>
-                Cancelar
-              </Button>
-              <Button className="h-12 flex-1 rounded-2xl bg-indigo-600 text-white hover:bg-indigo-700" onClick={confirmStatusChange}>
-                Confirmar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            <ClientStatusConfirmDialog pendingChange={pendingStatusChange} onCancel={() => setPendingStatusChange(null)} onConfirm={confirmStatusChange} />
+
     </div>
   );
 }

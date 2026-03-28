@@ -147,7 +147,7 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
   ];
 
   return (
-    <section ref={rootRef} className="workspace-shell animate-enter scroll-mt-28">
+    <section ref={rootRef} className="surface-card animate-enter scroll-mt-28 rounded-[32px] p-5 sm:p-6">
       <div className="workspace-header">
         <div className="min-w-0">
           <Badge className="rounded-full bg-slate-950 text-white dark:bg-slate-100 dark:text-slate-950">Cliente em foco</Badge>
@@ -193,7 +193,7 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
         <div className="space-y-4">
-          <section className="workspace-group workspace-group-muted">
+          <section className="surface-subtle rounded-[26px] p-5">
             <div className="flex items-center gap-3">
               <div className="workspace-stat-icon">
                 <UserRound className="size-[18px]" />
@@ -212,7 +212,7 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
             </div>
           </section>
 
-          <section className="workspace-group">
+          <section className="surface-inset rounded-[26px] p-5">
             <div className="flex items-center gap-2">
               <MessageSquarePlus className="size-4 text-slate-500 dark:text-slate-400" />
               <h3 className="font-semibold text-slate-950 dark:text-slate-50">Adicionar observação</h3>
@@ -246,7 +246,7 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
         </div>
 
         <div className="space-y-4">
-          <section className="workspace-group">
+          <section className="surface-inset rounded-[26px] p-5">
             <div className="flex items-center gap-2">
               <PhoneOutgoing className="size-4 text-slate-500 dark:text-slate-400" />
               <h3 className="font-semibold text-slate-950 dark:text-slate-50">Registrar tentativa de contato</h3>
@@ -284,7 +284,7 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
         </div>
       </div>
 
-      <section className="workspace-group mt-4 min-w-0">
+      <section className="surface-card mt-4 min-w-0 rounded-[30px] p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Clock3 className="size-4 text-slate-500 dark:text-slate-400" />
@@ -329,7 +329,7 @@ export function ClientTimelineSheet({ open, client, onClose }: ClientTimelineShe
                   {groupLabel}
                 </div>
                 {entries.map((entry) => (
-                  <div key={entry.id} className="rounded-[22px] border border-slate-200/85 bg-white/92 p-4 dark:border-slate-700/55 dark:bg-slate-900/64">
+                  <div key={entry.id} className="surface-subtle rounded-[22px] p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant={entry.type === "note" ? "secondary" : "outline"} className="uppercase tracking-[0.14em]">
                         {timelineActionLabel(entry)}

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { useClients } from "@/components/providers/clients-provider";
+import { ClientsListStateBanner } from "@/components/clientes/clients-list-state-banner";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateLabel, formatPhone } from "@/lib/client-helpers";
@@ -254,7 +255,7 @@ function ActionPanel({ label, value, helper, href, tone }: { label: string; valu
 }
 
 export function DashboardOverview() {
-  const { clients, stats, loading } = useClients();
+  const { clients, stats, loading, errorMessage, staleData, listRefreshing, refreshClients } = useClients();
   const [period, setPeriod] = useState<DashboardPeriod>(7);
 
   useEffect(() => {
@@ -382,7 +383,7 @@ export function DashboardOverview() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <section className="surface-card section-shell animate-enter overflow-hidden">
+      <section className="surface-card animate-enter overflow-hidden rounded-[30px] p-4 sm:p-6 lg:p-7">
         <div className="space-y-6">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-3xl">
@@ -394,7 +395,7 @@ export function DashboardOverview() {
             </div>
 
             <div className="flex flex-col gap-3 sm:min-w-[320px] sm:flex-row sm:items-center xl:flex-col xl:items-stretch">
-              <div className="flex flex-wrap gap-2 rounded-[24px] border border-slate-200/90 bg-white/92 p-1.5 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.18)] dark:border-slate-700/50 dark:bg-slate-900/70">
+              <div className="surface-subtle flex flex-wrap gap-2 rounded-[24px] p-1.5">
                 {periodOptions.map((option) => {
                   const active = period === option.value;
                   return (
@@ -413,7 +414,7 @@ export function DashboardOverview() {
                 })}
               </div>
 
-              <div className="flex items-center gap-3 rounded-[24px] border border-slate-200/90 bg-white/92 px-4 py-3 shadow-[0_18px_34px_-28px_rgba(15,23,42,0.18)] dark:border-slate-700/50 dark:bg-slate-900/70">
+              <div className="surface-subtle flex items-center gap-3 rounded-[24px] px-4 py-3">
                 <span className="size-2 rounded-full bg-emerald-500 animate-pulse-soft" />
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Operação</p>
@@ -466,17 +467,17 @@ export function DashboardOverview() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">
-                <div className="surface-muted rounded-[24px] p-4">
+                <div className="surface-inset rounded-[24px] p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Atualizados</p>
                   <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-slate-50">{insights.updated.current}</p>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Clientes movimentados no período.</p>
                 </div>
-                <div className="surface-muted rounded-[24px] p-4">
+                <div className="surface-inset rounded-[24px] p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Fechamento</p>
                   <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-slate-50">{insights.throughputRate}%</p>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Relação entre resolvidos e atualizados.</p>
                 </div>
-                <div className="surface-muted rounded-[24px] p-4">
+                <div className="surface-inset rounded-[24px] p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Carga aberta</p>
                   <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-slate-50">{insights.workloadOpen}</p>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Casos ainda ativos na operação.</p>
@@ -584,17 +585,17 @@ export function DashboardOverview() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="surface-muted rounded-[24px] p-4">
+              <div className="surface-inset rounded-[24px] p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Atualizados</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-slate-50">{insights.updated.current}</p>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Movimentados nos últimos {period} dias.</p>
               </div>
-              <div className="surface-muted rounded-[24px] p-4">
+              <div className="surface-inset rounded-[24px] p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Fechamento</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-slate-50">{insights.throughputRate}%</p>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Proporção entre atualizados e resolvidos.</p>
               </div>
-              <div className="surface-muted rounded-[24px] p-4">
+              <div className="surface-inset rounded-[24px] p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Carga aberta</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-slate-50">{insights.workloadOpen}</p>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Casos ainda ativos na operação.</p>
@@ -633,7 +634,7 @@ export function DashboardOverview() {
               </div>
               <div className="space-y-3">
                 {insights.bottlenecks.map((item) => (
-                  <div key={item.label} className="surface-muted rounded-[24px] p-4">
+                  <div key={item.label} className="surface-inset rounded-[24px] p-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="font-medium text-slate-950 dark:text-slate-50">{item.label}</p>
                       <span className="text-sm font-semibold text-slate-950 dark:text-slate-50">{item.value}</span>
@@ -658,7 +659,7 @@ export function DashboardOverview() {
               <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500 dark:border-slate-700/50 dark:bg-slate-800/40 dark:text-slate-400">Ainda não há movimentações suficientes no período para montar o ranking.</div>
             ) : (
               insights.productivity.map((item, index) => (
-                <div key={item.name} className="surface-muted rounded-[26px] p-4">
+                <div key={item.name} className="surface-subtle rounded-[26px] p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -690,7 +691,7 @@ export function DashboardOverview() {
                 <Badge variant="outline">{insights.recurring.length}</Badge>
               </div>
               {insights.recurring.map((client) => (
-                <Link key={client.id} href="/clientes?sort=services" className="surface-card hover-lift flex items-center justify-between gap-3 rounded-[22px] px-3 py-3 text-sm">
+                <Link key={client.id} href="/clientes?sort=services" className="surface-subtle hover-lift flex items-center justify-between gap-3 rounded-[22px] px-3 py-3 text-sm">
                   <div className="min-w-0">
                     <p className="truncate font-medium text-slate-950 dark:text-slate-50">{client.name}</p>
                     <p className="mt-1 truncate text-slate-500 dark:text-slate-400">{formatPhone(client.phone)}</p>
