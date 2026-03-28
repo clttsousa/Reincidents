@@ -1,6 +1,6 @@
 {
   "name": "recorrenciaos",
-  "version": "6.1.1",
+  "version": "6.1.2",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -44,5 +44,6 @@
   },
   "engines": {
     "node": "20.x"
-  }
+  },
+  "packageManager": "npm@10.8.2"
 }
