@@ -3,9 +3,9 @@ import { ClientsProvider } from "@/components/providers/clients-provider";
 
 export default function ClientesPage() {
   return (
-    <ClientsProvider mode="query" pageSize={20}>
+    <ClientsProvider>
       <div className="space-y-5 sm:space-y-6">
-        <section className="surface-card animate-enter rounded-[30px] px-5 py-4 sm:px-6">
+        <section className="page-panel animate-enter">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="section-heading">Carteira operacional</p>

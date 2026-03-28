@@ -89,7 +89,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <div
               key={toast.id}
               className={cn(
-                "animate-toast pointer-events-auto relative w-full max-w-sm overflow-hidden rounded-[24px] border px-4 py-3 shadow-[0_30px_60px_-36px_rgba(15,23,42,0.38)]",
+                "animate-toast pointer-events-auto relative w-full max-w-sm overflow-hidden rounded-[24px] border px-4 py-3 shadow-[0_30px_60px_-36px_rgba(15,23,42,0.38)] backdrop-blur",
                 toneClasses[tone],
               )}
             >

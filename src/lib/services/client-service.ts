@@ -1,5 +1,5 @@
-import type { AssigneeOption, ClientRecord, ClientStats, ClientStatus, ClientTimelineEntry } from "@/types/mock";
-import { buildStats, getAssigneeLabel, sanitizePhone } from "@/lib/client-helpers";
+import type { AssigneeOption, ClientRecord, ClientStatus, ClientTimelineEntry } from "@/types/mock";
+import { getAssigneeLabel } from "@/lib/client-helpers";
 import { createClient } from "@/lib/supabase/client";
 
 export type ClientRow = {
@@ -50,26 +50,6 @@ type ActorRow = {
   full_name: string | null;
   email: string | null;
 };
-
-export type ServerListSort = "updated-desc" | "name-asc" | "services-desc" | "next-action-asc" | "critical-first";
-
-export interface ClientListQuery {
-  search: string;
-  activeFilter: "Todos" | ClientStatus;
-  assigneeFilter: string;
-  criticalOnly: boolean;
-  staleOnly: boolean;
-  osFilter: "Todos" | "Com O.S." | "Sem O.S.";
-  resolvedFilter: "Todos" | "Resolvidos" | "Pendentes";
-  sortBy: ServerListSort;
-  page: number;
-  pageSize: number;
-}
-
-export interface ClientPageResponse {
-  items: ClientRecord[];
-  total: number;
-}
 
 export function sortClients(clients: ClientRecord[]) {
   return [...clients].sort((a, b) => {
@@ -128,102 +108,6 @@ export function inferHistoryTitle(row: HistoryRow) {
   }
 }
 
-function escapeLikeValue(value: string) {
-  return value.replace(/[%_]/g, (match) => `\\${match}`);
-}
-
-function applyClientListFilters(
-  query: any,
-  input: ClientListQuery,
-) {
-  let nextQuery = query;
-
-  if (input.search.trim()) {
-    const rawTerm = input.search.trim();
-    const textTerm = escapeLikeValue(rawTerm);
-    const digits = sanitizePhone(rawTerm);
-    const clauses = [
-      `name.ilike.%${textTerm}%`,
-      `description.ilike.%${textTerm}%`,
-      `responsible_name.ilike.%${textTerm}%`,
-      `os_number.ilike.%${textTerm}%`,
-    ];
-
-    if (digits.length >= 3) {
-      clauses.push(`phone.ilike.%${digits}%`);
-    }
-
-    nextQuery = nextQuery.or(clauses.join(","));
-  }
-
-  if (input.activeFilter !== "Todos") {
-    nextQuery = nextQuery.eq("status", input.activeFilter);
-  }
-
-  if (input.assigneeFilter !== "Todos") {
-    nextQuery = nextQuery.eq("responsible_name", input.assigneeFilter);
-  }
-
-  if (input.osFilter === "Com O.S.") {
-    nextQuery = nextQuery.eq("os_open", true);
-  }
-
-  if (input.osFilter === "Sem O.S.") {
-    nextQuery = nextQuery.eq("os_open", false);
-  }
-
-  if (input.resolvedFilter === "Resolvidos") {
-    nextQuery = nextQuery.eq("resolved", true);
-  }
-
-  if (input.resolvedFilter === "Pendentes") {
-    nextQuery = nextQuery.eq("resolved", false);
-  }
-
-  if (input.staleOnly) {
-    const staleThreshold = new Date(Date.now() - 3 * 86400000).toISOString();
-    nextQuery = nextQuery.lte("updated_at", staleThreshold);
-  }
-
-  if (input.criticalOnly) {
-    const overdueNow = new Date().toISOString();
-    const staleOpenOsThreshold = new Date(Date.now() - 2 * 86400000).toISOString();
-    nextQuery = nextQuery.or(
-      [
-        "total_services.gte.8",
-        'status.eq."Sem retorno"',
-        `next_action_at.lt.${overdueNow}`,
-        `and(os_open.eq.true,updated_at.lte.${staleOpenOsThreshold})`,
-      ].join(","),
-    );
-  }
-
-  return nextQuery;
-}
-
-function applyClientListSorting(
-  query: any,
-  sortBy: ServerListSort,
-) {
-  if (sortBy === "name-asc") {
-    return query.order("name", { ascending: true }).order("updated_at", { ascending: false });
-  }
-
-  if (sortBy === "services-desc") {
-    return query.order("total_services", { ascending: false }).order("updated_at", { ascending: false });
-  }
-
-  if (sortBy === "next-action-asc") {
-    return query.order("next_action_at", { ascending: true, nullsFirst: false }).order("updated_at", { ascending: false });
-  }
-
-  if (sortBy === "critical-first") {
-    return query.order("total_services", { ascending: false }).order("updated_at", { ascending: false });
-  }
-
-  return query.order("updated_at", { ascending: false }).order("total_services", { ascending: false });
-}
-
 export async function fetchProfiles(supabase: ReturnType<typeof createClient>) {
   const { data, error } = await supabase
     .from("profiles")
@@ -244,66 +128,6 @@ export async function fetchClients(supabase: ReturnType<typeof createClient>, as
 
   if (error) throw error;
   return ((data ?? []) as ClientRow[]).map((row) => mapRowToRecord(row, assignees));
-}
-
-export async function fetchClientPage(
-  supabase: ReturnType<typeof createClient>,
-  assignees: AssigneeOption[],
-  input: ClientListQuery,
-): Promise<ClientPageResponse> {
-  const from = Math.max((input.page - 1) * input.pageSize, 0);
-  const to = from + input.pageSize - 1;
-
-  let query = supabase
-    .from("clients")
-    .select(
-      "id, name, phone, total_services, description, status, responsible_user_id, responsible_name, os_open, os_number, resolved, notes, updated_at, last_contact_at, next_action_at",
-      { count: "exact" },
-    );
-
-  query = applyClientListFilters(query, input);
-  query = applyClientListSorting(query, input.sortBy);
-  query = query.range(from, to);
-
-  const { data, error, count } = await query;
-
-  if (error) throw error;
-
-  return {
-    items: ((data ?? []) as ClientRow[]).map((row) => mapRowToRecord(row, assignees)),
-    total: count ?? 0,
-  };
-}
-
-export async function fetchClientStats(supabase: ReturnType<typeof createClient>): Promise<ClientStats> {
-  const { data, error } = await supabase
-    .from("clients")
-    .select("id, total_services, status, next_action_at, updated_at, os_open, resolved");
-
-  if (error) throw error;
-
-  const lightweightRecords = ((data ?? []) as Pick<ClientRow, "id" | "total_services" | "status" | "next_action_at" | "updated_at" | "os_open" | "resolved">[]).map(
-    (row) =>
-      ({
-        id: row.id,
-        name: "",
-        phone: "",
-        totalServices: row.total_services,
-        description: "",
-        status: row.status,
-        responsibleUserId: null,
-        assignee: "",
-        osOpen: row.os_open,
-        osNumber: "",
-        resolved: row.resolved,
-        notes: "",
-        updatedAt: row.updated_at,
-        lastContactAt: "",
-        nextActionAt: row.next_action_at ?? "",
-      }) satisfies ClientRecord,
-  );
-
-  return buildStats(lightweightRecords);
 }
 
 export async function buildTimelineEntries(supabase: ReturnType<typeof createClient>, clientId: string): Promise<ClientTimelineEntry[]> {
@@ -329,7 +153,10 @@ export async function buildTimelineEntries(supabase: ReturnType<typeof createCli
 
   let names = new Map<string, string>();
   if (actorIds.size > 0) {
-    const { data: actorRows } = await supabase.from("profiles").select("id, full_name, email").in("id", Array.from(actorIds));
+    const { data: actorRows } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", Array.from(actorIds));
 
     names = new Map(((actorRows ?? []) as ActorRow[]).map((row) => [row.id, row.full_name ?? row.email ?? "Equipe"]));
   }

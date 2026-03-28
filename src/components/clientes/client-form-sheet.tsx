@@ -132,7 +132,7 @@ export function ClientFormSheet({
   if (!open) return null;
 
   return (
-    <section ref={rootRef} className="surface-card animate-enter scroll-mt-28 rounded-[32px] p-5 sm:p-6">
+    <section ref={rootRef} className="workspace-shell animate-enter scroll-mt-28">
       <div className="workspace-header">
         <div className="min-w-0">
           <Badge
@@ -177,7 +177,7 @@ export function ClientFormSheet({
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
           <div className="space-y-4">
-            <section className="surface-inset rounded-[26px] p-5">
+            <section className="workspace-group">
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
                 <h3 className="workspace-group-title">Contato e responsável</h3>
@@ -222,7 +222,7 @@ export function ClientFormSheet({
               </div>
             </section>
 
-            <section className="surface-inset rounded-[26px] p-5">
+            <section className="workspace-group">
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
                 <h3 className="workspace-group-title">Contexto do caso</h3>
@@ -254,7 +254,7 @@ export function ClientFormSheet({
           </div>
 
           <div className="space-y-4">
-            <section className="surface-inset rounded-[26px] p-5">
+            <section className="workspace-group">
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
                 <h3 className="workspace-group-title">Status, datas e operação</h3>
@@ -326,7 +326,7 @@ export function ClientFormSheet({
               </div>
             </section>
 
-            <section className="surface-subtle rounded-[26px] p-5">
+            <section className="workspace-group workspace-group-muted">
               <div className="flex items-center gap-2">
                 <Clock3 className="size-4 text-slate-400" />
                 <h3 className="workspace-group-title">Leitura operacional</h3>

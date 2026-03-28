@@ -67,7 +67,7 @@ function FilaPageContent() {
 
   return (
     <div className="space-y-6 animate-enter">
-      <section className="surface-card overflow-hidden rounded-[30px] p-4 sm:p-6 lg:p-7">
+      <section className="surface-card section-shell overflow-hidden">
         <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr] xl:items-stretch">
           <div className="rounded-[30px] border border-slate-200 bg-[linear-gradient(135deg,rgba(15,23,42,0.98),rgba(30,41,59,0.95),rgba(37,99,235,0.88))] p-5 text-white shadow-[0_28px_68px_-48px_rgba(15,23,42,0.75)]">
             <Badge className="border-white/10 bg-white/10 text-white">Kanban operacional</Badge>
@@ -184,7 +184,7 @@ function FilaPageContent() {
                     const overdue = !item.resolved && item.nextActionAt && new Date(item.nextActionAt).getTime() < Date.now();
 
                     return (
-                      <div key={item.id} className="surface-inset hover-lift rounded-[26px] p-4">
+                      <div key={item.id} className="surface-muted hover-lift rounded-[26px] p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
